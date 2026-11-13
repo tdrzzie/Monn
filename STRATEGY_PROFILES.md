@@ -110,3 +110,7 @@ Original protection is used where the source strategy supplies executable price 
 | migration | new entries only | Existing broker positions keep their SL/TP. No stop widening/removal, mass position updates, forecast/time/channel liquidation, risk-budget change, halt reset, ownership change or decision replay. Dynamic/signal exits are not represented as invented static TP prices. |
 
 Every strategy has a stable identity and magic in `Monn/exness_arena/registry.json`. The shared journal attributes deals and positions by original opening ownership and stable position ID, including partial closes and manual exits. Results remain separate by repository and strategy. The tracker exports `results.csv`, `strategies.csv` and `positions.csv` under the local `Monn/.exness-arena/` directory.
+
+## Paper research plan
+
+Plan `mfe-inversion-v2` adds prospective MFE entry-stop / peak-trail tests and independently sized reversed SL/TP signals alongside original / 1R / 3R exits. All retain the 3.50 USC sizing ceiling and symbol caps. Missing fixed TP and unaffordable minimum lots are explicit rejections. Legacy `targets-v1` observations stay unchanged; matched comparisons preserve strategy, version, plan and cohort identity and show pending pairs. These paper tests never change live rules or the drawdown halt. See `RESEARCH.md` for timing and cost limitations.

@@ -31,6 +31,7 @@ test('paper versions and cohorts cannot be mistaken for one experiment',()=>{
   const row={bot:'tradingbot',strategy:'donchian',version_id:'a',mode:'paper_seed',variant:'proposed'};
   assert.notEqual(cohortKey(row),cohortKey({...row,version_id:'b'}));
   assert.notEqual(cohortKey(row),cohortKey({...row,mode:'live_evaluation'}));
+  assert.notEqual(cohortKey({...row,plan_id:'targets-v1'}),cohortKey({...row,plan_id:'mfe-inversion-v2'}));
 });
 test('events group only identical repository, strategy, kind and detail',()=>{
   const event={repo:'Monn',strategy:'ma_cross',kind:'blocked',detail:'halt',time:'a'};

@@ -16,7 +16,7 @@ Research is observational. The existing live guard, 3.50 USC per-position ceilin
 | `live_deals` / `live_context` | Original broker deal payloads and exact opening-order/deal links to recorded live decisions and versions. Trades without a recorded match remain explicitly unknown. A paper-seed decision is never attributed to a real trade. |
 | `live_initial_risk` / `live_path` | Initial stop risk when an opening record is known; sampled floating profit, swap, booked deal P&L/costs, quote, volume and protection. Samples support observed favorable/adverse excursion bounds in USC, and R where initial risk is known. |
 | `shadows` / `shadow_events` | Persistent paper positions, immutable opening references, simulated exits, initial risk, gross USC, R-multiple and observed excursion bounds. |
-| `shadow_rejections` / `observations` | Why a paper candidate could not fit its sizing/market checks, and research-data failures. |
+| `shadow_rejections` / `shadow_variant_rejections` / `observations` | Why a paper candidate could not fit its sizing/market checks, and research-data failures. |
 
 Generic features include SMA(20/50/100/200), TA-Lib ATR(14/48), RSI(2/14), the last closed bar and UTC hour. Adapters additionally record their available signal/forecast, original configuration or parameters, Aurum artifact manifest, Donchian native stop, SuperTrend lines/forming open and Sunrise signal/state detail. These are not claimed to be every internal indicator. The exact input window plus source/configuration version supports deeper replay and feature extraction later. Forming-bar extremes are not used as closed signal data.
 
@@ -26,13 +26,19 @@ Decisions are recorded from deployment onward. Live evaluation still obeys the e
 
 ## Shadow experiment fixed in advance
 
-For each new entry proposal, compare three independent paper scenarios:
+Plan `mfe-inversion-v2` applies only to newly observed entry proposals. Existing `targets-v1` shadows retain their original three exits and stored outcomes; no new variants are backfilled onto old signals. The plan ID is included in version configuration and summary grouping. Six independent paper scenarios are predeclared:
 
 1. **`proposed`:** keep the strategy's proposed SL and TP, including no fixed TP where supported.
 2. **`target_1r`:** keep the same SL and set the target one initial stop-distance from entry.
 3. **`target_3r`:** keep the same SL and set the target three initial stop-distances from entry.
 
-All scenarios use the same entry side, observed executable ask/bid, volume and SL. Volume is rounded down using the existing symbol cap, broker minimum/step/maximum and 3.50 USC risk ceiling with its 10% reserve. Entry stop-distance, spread and margin checks apply. Invalid or unaffordable proposals are retained as rejections, not forced into paper trades. Paper scenarios time out at the first eligible closed bar after 96 M15 intervals (24 elapsed hours) if neither protection level has been reached.
+4. **`mfe_lock_05r`:** keep the original TP; after observing +0.5 initial price-R, move the virtual stop to entry. This protects entry price, not net break-even after costs.
+5. **`mfe_trail_1r`:** keep the original TP; after observing +1 initial price-R, trail the observed favorable peak by 0.5 initial price-R. Never widen the virtual stop.
+6. **`reversed_swap`:** use the opposite side's executable price from the same quote; the original fixed TP becomes the SL, and the original SL becomes the TP. No fixed original TP means unsupported, rather than inventing one.
+
+Price-R is the initial entry-to-stop distance, held fixed as protection tightens. Reported monetary R is gross broker-valued P&L divided by that variant's own initial USC risk. The five forward scenarios use the same side, entry, volume and initial SL. The reversal is independently sized against its new stop; its risk and volume can differ. All variants retain the 3.50 USC ceiling, 10% sizing reserve, requested-volume ceiling and existing symbol lot caps. A reversal whose minimum lot, protection, spread or margin cannot fit is rejected individually without discarding valid forward tests. Rejection summaries retain variant, plan, version, cohort and reason.
+
+MFE protection activates prospectively after a quote or completed bar reveals the favorable move. Existing protection is checked first; an ambiguous bar hitting the original stop cannot arm an MFE exit first. A stop activated inside a bar is not tested against that bar's earlier extrema: original protection is the conservative fallback for that overlapping bar. If a newly revealed bar peak already retraced past the tightened stop, exit at the observed bar close, never an invented earlier entry/peak fill. Virtual stop changes, activation times and observed peaks are persisted across restarts. This is a sampled execution model, not a tick-exact backtest. Volume is rounded down using the existing symbol cap, broker minimum/step/maximum and 3.50 USC risk ceiling with its 10% reserve. Entry stop-distance, spread and margin checks apply. Invalid or unaffordable proposals are retained as rejections, not forced into paper trades. Paper scenarios time out at the first eligible closed bar after 96 M15 intervals (24 elapsed hours) if neither protection level has been reached.
 
 These are **independent per-signal counterfactuals**, not a simulated funded portfolio. The simulator deliberately observes proposals that live trading blocks, including during the drawdown halt. It does not simulate account/repo/strategy loss budgets, same-direction profitable-addition gates, shared collateral allocation or a portfolio liquidation policy. The live order outcome and flags are recorded alongside the signal so research can distinguish executable and blocked cases. Shadow losses never enter live loss counters.
 
@@ -44,11 +50,13 @@ Shadow results are **gross hypothetical results**, not measured live returns. En
 
 Keep variants fixed while collecting a prospective cohort. Separate code/protection versions, seeded versus live-evaluation cohorts, costs, symbols and overlapping signal times when analyzing results. Hold out later data before selecting a change; one market session and correlated trades are not enough to establish an improvement. Nothing here automatically trains, optimizes or deploys a strategy.
 
+Broker sizing reads run before the decision write transaction; the collector commits each shadow independently, with its state and events atomic. This prevents long native reads or a large paper book from blocking all research writers.
+
 Research failures are reported separately. They never retry a real submission or clear a live gate. A partially recorded decision stays `started`/`error` rather than being invented as a successful observation. Disk use grows with collected history; no automatic pruning or archival deletion is enabled.
 
 ## Inspect and export
 
-The Arena dashboard at `http://127.0.0.1:8765/#research` has a dedicated paper-only research view grouped by repository, strategy, version, observation mode, variant and open/closed state, with filtering, sorting, pagination and local CSV export. See `Monn/DASHBOARD.md` for all views and value definitions. `http://127.0.0.1:8765/api/research` exposes the summary and limitations separately from live results.
+The Arena dashboard at `http://127.0.0.1:8765/#research` has a dedicated paper-only research view grouped by repository, strategy, version, observation mode, experiment plan, variant and open/closed state, with filtering, sorting, pagination and local CSV export. The matched comparison panel joins the same decision and attempt to its original `proposed` exit within the same version and plan. It shows both-closed / eligible counts, pending pairs, missing baselines, baseline/alternative mean R, paired mean ΔR and paired gross USC. Unsupported variants are shown separately. Only both-closed pairs contribute P&L comparisons; that subset remains censored while other pairs are pending. No significance or winner is claimed. Outcome-status filtering affects the raw exit table, not pair completeness. Legacy and new plans stay separate. See `Monn/DASHBOARD.md` for all views and value definitions. `http://127.0.0.1:8765/api/research` exposes the summary and limitations separately from live results.
 
 From the workspace parent in PowerShell:
 

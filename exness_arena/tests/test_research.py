@@ -43,7 +43,7 @@ def test_paper_evaluation_records_exact_inputs_and_does_not_call_live_gateway(la
         assert json.loads(row['context'])['live_flags']['halt']=='account drawdown'
         raw=db.execute('SELECT payload FROM inputs').fetchone()[0]
         assert json.loads(zlib.decompress(raw))['rows']==research.plain(bars().tolist())
-        assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==3
+        assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==5
         assert all(0<r[0]<=3.5 for r in db.execute('SELECT initial_risk FROM shadows'))
         cfg=json.loads(db.execute('SELECT config FROM versions').fetchone()[0])
         assert 'login' not in cfg and 'server' not in cfg
@@ -59,7 +59,7 @@ def test_halted_live_attempt_is_logged_and_shadowed_without_bypassing_halt(lab):
     with research.connect() as db:
         row=db.execute('SELECT result FROM attempts').fetchone()
         assert 'halted' in json.loads(row[0])['comment']
-        assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==3
+        assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==5
 
 
 def test_paper_restart_deduplicates_decisions_and_scenarios(lab):
@@ -68,7 +68,7 @@ def test_paper_restart_deduplicates_decisions_and_scenarios(lab):
     assert 'already recorded' in research.evaluate(proposal,g,'Monn','ma_cross','EURUSDc',bars(),paper=True)
     with research.connect() as db:
         assert db.execute('SELECT COUNT(*) FROM attempts').fetchone()[0]==1
-        assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==3
+        assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==5
 
 
 def test_observation_failure_does_not_repeat_or_change_live_call(lab,monkeypatch):
@@ -232,7 +232,7 @@ def test_summary_does_not_merge_source_versions(lab,monkeypatch):
     research.evaluate(proposal,g,'Monn','ma_cross','EURUSDc',bars(),paper=True)
     groups=research.summary()['shadows']
     assert len({r['version_id'] for r in groups})==2
-    assert len(groups)==6 and all(r['count']==1 for r in groups)
+    assert len(groups)==10 and all(r['count']==1 for r in groups)
 
 
 @pytest.mark.parametrize('bid,ask',[(0,1.1),(1.1,1),(float('nan'),1.1)])
