@@ -78,6 +78,13 @@ class Gateway:
             raise GuardError("Cannot retrieve orders")
         return tuple(o for o in orders if o.magic == self.magic)
 
+    def trial_position_symbols(self):
+        ps = self.native.positions_get()
+        if ps is None:
+            raise GuardError("Cannot retrieve positions for watchlist reconciliation")
+        magics = {REGISTRY[b]["magic"] for b in self.cfg()["enabled_bots"]}
+        return [p.symbol for p in ps if p.magic in magics]
+
     def symbol_info(self, name):
         return self.native.symbol_info(self.symbol(name))
 

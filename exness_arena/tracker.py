@@ -77,10 +77,13 @@ def collect():
         statuses = {b: {"time": t, "status": s, "detail": detail} for b, t, s, detail in db.execute("SELECT * FROM health")}
         events = [{"time": t, "repo": b, "kind": k, "detail": json.loads(d)} for t, b, k, d in db.execute("SELECT time,bot,kind,detail FROM events ORDER BY id DESC LIMIT 30")]
         halt = db.execute("SELECT value FROM flags WHERE name='halt'").fetchone()
+        coverage = [{"repo": b, "symbol": s, "time": t, "status": status, "detail": detail, "last_bar": bar}
+                    for b, s, t, status, detail, bar in db.execute("SELECT * FROM coverage ORDER BY bot,symbol")]
     for row in rows:
         row["status"] = statuses.get(row["repo"], {"status": "blocked", "detail": REGISTRY[row["repo"]].get("blocked", "not started")})
     data = {"updated_utc": timestamp, "currency": "USC", "rows": rows,
             "halt": halt[0] if halt else None, "events": events, "unallocated_fees_usc": unallocated,
+            "watchlist": cfg["symbols"], "coverage": coverage,
             "note": "USC / 100 = USD. Net includes deal fees and swap. Drawdown is sampled every 10 seconds. Shared equity/margin and slippage affect comparisons."}
     target = STATE / "results.json"
     temp = target.with_suffix(".tmp")
@@ -100,8 +103,10 @@ HTML = """<!doctype html><meta charset=utf-8><title>Exness cent bot trial</title
 <h1>Exness cent bot trial</h1><p id=info></p><p class=muted>USC = US cents · 100 USC = $1 · Each ready bot has the same risk cap. Pending bots are excluded from the comparison.</p>
 <table><thead><tr><th>Repository</th><th>Status</th><th>Magic</th><th>Closed / open</th><th>Closed net USC</th><th>Floating USC</th><th>Total USD</th><th>Win rate</th><th>Sampled DD USC</th></tr></thead><tbody id=rows></tbody></table>
 <p class=muted>Net includes commission, fees and swap. API costs are separate. A profitable short trial does not establish a lasting edge. Limits cannot guarantee maximum losses through gaps.</p>
+<h2>Pair monitoring</h2><p id=universe></p><pre id=coverage></pre>
 <h2>Latest execution events</h2><pre id=events></pre><script>
 async function refresh(){try{const d=await(await fetch('/api/results')).json();document.querySelector('#info').textContent=d.updated_utc+(d.halt?' · HALTED: '+d.halt:'');const b=document.querySelector('#rows');b.replaceChildren();for(const r of d.rows){const tr=document.createElement('tr');for(const v of [r.repo,r.status.status,r.magic,r.closed_positions+' / '+r.open_positions,r.closed_net_usc.toFixed(3),r.floating_usc.toFixed(3),r.total_net_usd.toFixed(4),r.win_rate===null?'—':(100*r.win_rate).toFixed(1)+'%',r.sampled_drawdown_usc.toFixed(3)]){const td=document.createElement('td');td.textContent=v;tr.append(td)}tr.title=r.status.detail||'';b.append(tr)}document.querySelector('#events').textContent=d.events.map(e=>e.time+' '+e.repo+' '+e.kind+' '+JSON.stringify(e.detail)).join('\\n')}catch(e){document.querySelector('#info').textContent='Tracker unavailable: '+e}}refresh();setInterval(refresh,10000)
+async function pairCoverage(){try{const d=await(await fetch('/api/results')).json();document.querySelector('#universe').textContent=(d.watchlist||[]).length+' pairs · M15 · broker inventory refreshed every minute';document.querySelector('#coverage').textContent=(d.coverage||[]).map(x=>x.repo+' | '+x.symbol+' | '+x.status+' | '+x.detail).join('\\n')}catch(e){document.querySelector('#universe').textContent='Pair status unavailable'}}pairCoverage();setInterval(pairCoverage,10000)
 </script>"""
 
 

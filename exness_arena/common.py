@@ -32,6 +32,7 @@ def connect():
       CREATE TABLE IF NOT EXISTS deals(ticket INTEGER PRIMARY KEY, position_id INTEGER, bot TEXT, payload TEXT);
       CREATE TABLE IF NOT EXISTS samples(time TEXT, bot TEXT, net REAL, floating REAL, PRIMARY KEY(time,bot));
       CREATE TABLE IF NOT EXISTS flags(name TEXT PRIMARY KEY, value TEXT);
+      CREATE TABLE IF NOT EXISTS coverage(bot TEXT, symbol TEXT, time TEXT, status TEXT, detail TEXT, bar INTEGER, PRIMARY KEY(bot,symbol));
     """)
     return db
 

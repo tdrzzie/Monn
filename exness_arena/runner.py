@@ -14,6 +14,7 @@ import traceback
 from pathlib import Path
 
 from .common import REGISTRY, STATE, claim_bar, health, settings
+from .universe import refresh, coverage
 
 
 def close_owned(gateway, position):
@@ -120,15 +121,23 @@ def main(bot):
     else:
         from mt5_trading.domain.strategies.cross_over_strategy import CrossOverStrategy  # noqa: F401
         cycle = crossover_cycle
+    watchlist = refresh(gateway)
     c = settings()
-    for symbol in c["symbols"]:
+    ready = 0
+    for symbol in watchlist:
         if not gateway.symbol_select(symbol, True):
-            raise RuntimeError("Symbol unavailable: " + symbol)
+            coverage(bot, symbol, "unavailable", "Broker symbol selection failed")
+            continue
         rates = gateway.copy_rates_from_pos(symbol, gateway.TIMEFRAME_M15, 1, 300)
         if rates is None or len(rates) < 150:
-            raise RuntimeError("Insufficient closed-bar history: " + symbol)
+            coverage(bot, symbol, "waiting_history", "Need at least 150 closed M15 bars")
+            continue
+        coverage(bot, symbol, "ready", "Closed M15 history available", int(rates[-1]["time"]))
+        ready += 1
+    if not ready:
+        raise RuntimeError("No pairs have sufficient history; no orders sent")
     if args.preflight:
-        print(f"{bot}: PASS account pin, owned-position queries, strategy imports and M15 history; no orders sent")
+        print(f"{bot}: PASS account pin, strategy imports and M15 history on {ready}/{len(watchlist)} pairs; no orders sent")
         return
     health(bot, "running", "Waiting for a new closed bar")
     print(f"{bot}: started, magic={REGISTRY[bot]['magic']}, risk cap={c['risk_budget_usc']:.4f} USC", flush=True)
@@ -142,22 +151,37 @@ def main(bot):
             handle.flush()
         handle.seek(0)
         msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        last_refresh = time.monotonic()
+        failed = False
         try:
             while not (STATE / "STOP").exists():
                 try:
                     gateway._gateway.validate_account()
+                    if time.monotonic() - last_refresh >= 60:
+                        watchlist = refresh(gateway)
+                        last_refresh = time.monotonic()
                     messages = []
-                    for symbol in c["symbols"]:
+                    evaluated = 0
+                    for symbol in watchlist:
+                        if not gateway.symbol_select(symbol, True):
+                            coverage(bot, symbol, "unavailable", "Broker symbol selection failed")
+                            continue
                         rates = gateway.copy_rates_from_pos(symbol, gateway.TIMEFRAME_M15, 1, 300)
                         if rates is None or len(rates) < 150:
-                            raise RuntimeError("Closed-bar history unavailable")
+                            coverage(bot, symbol, "waiting_history", "Need at least 150 closed M15 bars")
+                            continue
                         bar = int(rates[-1]["time"])
                         if claim_bar(bot, symbol, bar):
                             message = cycle(gateway, symbol, rates)
+                            coverage(bot, symbol, "evaluated", message, bar)
+                            evaluated += 1
                             messages.append(symbol + ": " + message)
                             print(messages[-1], flush=True)
-                    health(bot, "running", "; ".join(messages) or "Waiting for next closed M15 bar")
+                        else:
+                            coverage(bot, symbol, "monitoring", "Waiting for next closed M15 bar", bar)
+                    health(bot, "running", f"Monitoring {len(watchlist)} pairs; evaluated {evaluated} new closed M15 bars this pass")
                 except Exception:
+                    failed = True
                     detail = traceback.format_exc()
                     health(bot, "error", detail)
                     print(detail, flush=True)
@@ -167,7 +191,8 @@ def main(bot):
                     break
                 time.sleep(10)
         finally:
-            health(bot, "stopped", "Runner exited; existing server-side stops remain active")
+            if not failed:
+                health(bot, "stopped", "Runner exited; existing server-side stops remain active")
             gateway.shutdown()
 
 
