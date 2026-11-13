@@ -5,6 +5,7 @@ Rule semantics must also be reviewed against the shared guard when they change.
 """
 import argparse
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -59,7 +60,7 @@ This repo is {'enabled' if repo in c['enabled_bots'] else 'disabled'} in the liv
 
 Across the five repos there are {sum(len(c['enabled_strategies'][r]) for r in REPOS)} enabled profiles ({counts}). Enabled configuration is not a claim of current process health or profitability. Consult the dashboard for running, quarantined and halted status.
 
-Broker pair discovery is {'enabled' if c.get('discover_pairs') else 'disabled'}; the current watchlist contains {len(c['symbols'])} pairs. Inventory refreshes every minute. Strategies scan all discovered tradable cent currency, metal and crypto pairs compatible with their parameters. Sunrise retains eight pair-specific profiles; Aurum `managed_gold` is gold-only. Disabled/close-only symbols, non-pair contracts and conversion indicators cannot receive new entries. Missing history is reported per strategy/pair. See `Monn/STRATEGY_PROFILES.md` for strategy magics, pair scopes and execution conventions, and `Monn/exness_arena/compatibility.json` for exclusions. Claude Trader is skipped; EA31337 remains blocked and is not part of this five-repo deployment.
+Broker pair discovery is {'enabled' if c.get('discover_pairs') else 'disabled'}; the current watchlist contains {len(c['symbols'])} instruments. Inventory refreshes every minute. Compatible strategies scan discovered tradable cent currency, metal and crypto pairs plus the five approved oil/index CFDs: `UKOILc`, `USOILc`, `USTECc`, `US30c`, and `US500c`. Sunrise retains eight pair-specific profiles; Aurum `managed_gold` is gold-only. Disabled/close-only symbols, unapproved non-pair contracts and conversion indicators cannot receive new entries. Monn, MT5-Python-Trading, Aurum (except gold-only `managed_gold`) and SuperTrend include all five CFDs; Sunrise has no original oil/index profile and remains restricted to its eight original instruments. Each CFD signal must still pass broker history, stop valuation, minimum-volume, margin, spread and session/order checks; inclusion does not guarantee an entry. Broker specifications checked on 2026-11-13: oil minimum volume is 0.01; `USTECc`/`US30c` minimum volume is 0.05 and `US500c` is 0.14. With the unchanged 0.01 volume cap, oils are eligible when the other checks pass, while index entries are skipped. Contract specifications can change; the live guard always rechecks broker limits. Missing history is reported per strategy/pair. See `Monn/STRATEGY_PROFILES.md` for strategy magics, pair scopes and execution conventions, and `Monn/exness_arena/compatibility.json` for exclusions. Claude Trader is skipped; EA31337 remains blocked and is not part of this five-repo deployment.
 
 {rules}
 ## Operation and documentation
@@ -81,6 +82,8 @@ def main():
     files = {ROOT.parent / repo / 'EXNESS_TRIAL.md': render(c, repo, rules) for repo in REPOS}
     catalog = ROOT / 'STRATEGY_PROFILES.md'
     text = catalog.read_text(encoding='utf-8').split('## Combined-cap removal')[0].split('## Current shared trading rules')[0].rstrip()
+    text = re.sub(r'All \d+ discovered pairs', f"All {len(c['discovered_pairs'])} discovered instruments", text)
+    text = re.sub(r'All \d+ discovered instruments', f"All {len(c['discovered_pairs'])} discovered instruments", text)
     files[catalog] = text + '\n\n' + rules.rstrip() + '\n'
     stale = [p for p, content in files.items() if p.read_text(encoding='utf-8') != content]
     if args.check:

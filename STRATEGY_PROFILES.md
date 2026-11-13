@@ -4,27 +4,27 @@ The runtime enabled list is local in `Monn/.exness-arena/settings.json`. These 3
 
 | Repo | Strategy | Magic | Pair scope |
 |---|---|---:|---|
-| Monn | ma_cross | 26111301 | All 30 discovered pairs |
-| Monn | break_strategy | 26111701 | All 30 discovered pairs |
-| Monn | macd_divergence | 26111702 | All 30 discovered pairs |
-| Monn | ma_heikin_ashi | 26111703 | All 30 discovered pairs |
-| Monn | price_action | 26111704 | All 30 discovered pairs |
-| Monn | rsi_hidden_divergence | 26111705 | All 30 discovered pairs |
-| Monn | rsi_regular_divergence | 26111706 | All 30 discovered pairs |
-| Monn | trend_following | 26111707 | All 30 discovered pairs |
-| MT5-Python-Trading | crossover | 26111302 | All 30 discovered pairs |
-| MT5-Python-Trading | smc | 26111601 | All 30 discovered pairs |
-| MT5-Python-Trading | trend_breakout | 26111602 | All 30 discovered pairs |
-| MT5-Python-Trading | combined | 26111603 | All 30 discovered pairs |
-| tradingbot | ema_cross | 26111305 | All 30 discovered pairs |
-| tradingbot | tsmom | 26111801 | All 30 discovered pairs |
-| tradingbot | donchian | 26111802 | All 30 discovered pairs |
-| tradingbot | kalman_trend | 26111803 | All 30 discovered pairs |
-| tradingbot | zscore_fade | 26111804 | All 30 discovered pairs |
-| tradingbot | rsi2 | 26111805 | All 30 discovered pairs |
-| tradingbot | bollinger_revert | 26111806 | All 30 discovered pairs |
-| tradingbot | vol_squeeze | 26111807 | All 30 discovered pairs |
-| tradingbot | orb | 26111808 | All 30 discovered pairs |
+| Monn | ma_cross | 26111301 | All 35 discovered instruments |
+| Monn | break_strategy | 26111701 | All 35 discovered instruments |
+| Monn | macd_divergence | 26111702 | All 35 discovered instruments |
+| Monn | ma_heikin_ashi | 26111703 | All 35 discovered instruments |
+| Monn | price_action | 26111704 | All 35 discovered instruments |
+| Monn | rsi_hidden_divergence | 26111705 | All 35 discovered instruments |
+| Monn | rsi_regular_divergence | 26111706 | All 35 discovered instruments |
+| Monn | trend_following | 26111707 | All 35 discovered instruments |
+| MT5-Python-Trading | crossover | 26111302 | All 35 discovered instruments |
+| MT5-Python-Trading | smc | 26111601 | All 35 discovered instruments |
+| MT5-Python-Trading | trend_breakout | 26111602 | All 35 discovered instruments |
+| MT5-Python-Trading | combined | 26111603 | All 35 discovered instruments |
+| tradingbot | ema_cross | 26111305 | All 35 discovered instruments |
+| tradingbot | tsmom | 26111801 | All 35 discovered instruments |
+| tradingbot | donchian | 26111802 | All 35 discovered instruments |
+| tradingbot | kalman_trend | 26111803 | All 35 discovered instruments |
+| tradingbot | zscore_fade | 26111804 | All 35 discovered instruments |
+| tradingbot | rsi2 | 26111805 | All 35 discovered instruments |
+| tradingbot | bollinger_revert | 26111806 | All 35 discovered instruments |
+| tradingbot | vol_squeeze | 26111807 | All 35 discovered instruments |
+| tradingbot | orb | 26111808 | All 35 discovered instruments |
 | tradingbot | managed_gold | 26111809 | XAUUSDc |
 | mt5_live_trading_bot | sunrise_eurusd | 26111303 | EURUSDc |
 | mt5_live_trading_bot | sunrise_gbpusd | 26111402 | GBPUSDc |
@@ -34,7 +34,7 @@ The runtime enabled list is local in `Monn/.exness-arena/settings.json`. These 3
 | mt5_live_trading_bot | sunrise_usdchf | 26111406 | USDCHFc |
 | mt5_live_trading_bot | sunrise_eurjpy | 26111407 | EURJPYc |
 | mt5_live_trading_bot | sunrise_usdjpy | 26111408 | USDJPYc |
-| Forex-Trading-Bot | supertrend | 26111306 | All 30 discovered pairs |
+| Forex-Trading-Bot | supertrend | 26111306 | All 35 discovered instruments |
 
 ## Trial execution conventions
 
@@ -50,7 +50,7 @@ Sunrise retains its eight original pair-specific classes/configurations and repl
 
 Unexpected live strategy evaluation errors quarantine that strategy persistently, leave protective stops intact, and allow sibling strategies to continue. A quarantined strategy cannot submit new entries until reviewed; there is no automatic error-halt reset.
 
-Read-only `exness_trial.py --audit-all` evaluates registered strategies without enabling them or sending orders. The three expanded repos passed 240, 120 and 271 pair/strategy checks respectively.
+Read-only `exness_trial.py --audit-all` evaluates registered strategies without enabling them or sending orders. The expanded 35-instrument universe passes 280 Monn, 140 MT5-Python-Trading, 316 Aurum and 35 SuperTrend strategy/instrument checks; Sunrise retains eight original profile checks. No orders are sent by these audits. The five approved CFDs are UKOILc, USOILc, USTECc, US30c and US500c. Gold-only managed_gold and pair-specific Sunrise profiles are not expanded. All three indices currently exceed the unchanged 0.01 order-volume cap and are scan-only until broker minimum volume fits; oil minimum volume is 0.01. Ordinary stop-risk and execution checks remain mandatory.
 
 ## Strategies not enabled
 

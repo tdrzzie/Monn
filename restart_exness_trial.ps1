@@ -15,10 +15,6 @@ foreach ($record in $records) {
     $expected = if ($record.repo -eq 'tracker') { 'exness_arena.tracker' } else { "$($record.repo)\exness_trial.py" }
     if ($procInfo.ExecutablePath -ne $python -or -not $procInfo.CommandLine.Contains($expected)) { throw "Process identity mismatch: $($record.repo)" }
 }
-foreach ($repo in $enabledBots) {
-    & $python (Join-Path $workspace "$repo\exness_trial.py") --preflight
-    if ($LASTEXITCODE -ne 0) { throw "Preflight failed: $repo" }
-}
 $token = [guid]::NewGuid().ToString()
 Set-Content -LiteralPath $marker -Value $token -NoNewline
 $deadline = (Get-Date).AddSeconds(45)
@@ -28,6 +24,12 @@ do {
     Start-Sleep -Milliseconds 500
 } while ((Get-Date) -lt $deadline)
 if ($stillRunning.Count) { throw 'Runners have not exited cleanly. Trial remains paused.' }
+# Old workers must exit before new discovery code updates the shared watchlist.
+# Otherwise an old inventory refresh can overwrite the expanded universe mid-preflight.
+foreach ($repo in $enabledBots) {
+    & $python (Join-Path $workspace "$repo\exness_trial.py") --preflight
+    if ($LASTEXITCODE -ne 0) { throw "Preflight failed: $repo. Trial remains paused." }
+}
 if ($RemoveCombinedOpenRiskCap) {
     & $python -m exness_arena.control remove-combined-cap
     if ($LASTEXITCODE -ne 0) { throw 'Combined-cap update failed. Trial remains paused.' }

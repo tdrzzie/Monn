@@ -1,6 +1,8 @@
-"""Broker-discovered currency, metal and crypto pairs on the pinned cent account."""
+"""Broker-discovered pairs and approved energy/index CFDs on the pinned account."""
 import json
 from .common import STATE, REGISTRY, event, locked, now, settings
+
+APPROVED_CFDS = frozenset({'UKOILc', 'USOILc', 'USTECc', 'US30c', 'US500c'})
 
 
 def tradable_pairs(symbols, full_mode=4):
@@ -9,7 +11,7 @@ def tradable_pairs(symbols, full_mode=4):
     return sorted(s.name for s in symbols
                   if s.name.endswith("c") and s.trade_mode == full_mode
                   and s.currency_base and s.currency_profit
-                  and s.currency_base != s.currency_profit
+                  and (s.currency_base != s.currency_profit or s.name in APPROVED_CFDS)
                   and str(s.path).startswith("Cent\\"))
 
 
