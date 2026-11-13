@@ -45,3 +45,9 @@ def coverage(bot, symbol, status, detail="", bar=None, strategy=None):
     with locked() as db:
         db.execute("INSERT OR REPLACE INTO coverage VALUES(?,?,?,?,?,?)", (bot, symbol, now(), status, str(detail), bar))
         db.execute('INSERT OR REPLACE INTO strategy_coverage VALUES(?,?,?,?,?,?,?)', (bot, strategy, symbol, now(), status, str(detail), bar))
+    try:
+        from .research import availability
+        availability(bot,strategy,symbol,status,detail,bar)
+    except Exception as exc:
+        from .research import research_error
+        research_error('availability',exc)

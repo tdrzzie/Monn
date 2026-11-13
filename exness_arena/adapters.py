@@ -17,6 +17,7 @@ import pandas as pd
 import talib
 
 from .volume import entry_volume_cap
+from .research import observe
 from .common import STATE, settings, locked
 
 WORKSPACE = Path(__file__).resolve().parents[2]
@@ -43,6 +44,7 @@ def submit(gateway, symbol, side, sl, tp):
     if not math.isfinite(float(sl)) or float(sl) <= 0 or (tp is not None and (not math.isfinite(float(tp)) or float(tp) <= 0)):
         return 'No valid protective price levels'
     info = gateway.symbol_info(symbol)
+    observe(gateway, proposed_side=side, proposed_sl=sl, proposed_tp=tp)
     result = gateway.order_send({'action': gateway.TRADE_ACTION_DEAL, 'symbol': symbol, 'type': side,
         'volume': entry_volume_cap(symbol, settings()), 'sl': float(sl), 'tp': round(float(tp), info.digits) if tp is not None else 0.0})
     return f"{'buy' if side == 0 else 'sell'} signal; execution retcode={getattr(result, 'retcode', None)}: {getattr(result, 'comment', '')}"
@@ -62,6 +64,8 @@ def forex_cycle(gateway, symbol, rates):
     opening = float(forming[0]['open'])
     last = dict(frame.iloc[-1]); last.update(time=int(forming[0]['time']), open=opening, high=opening, low=opening, close=opening)
     maximum, minimum, average = strategy.Indicator(pd.concat([frame, pd.DataFrame([last])], ignore_index=True))
+    observe(gateway, supertrend_maximum=maximum, supertrend_minimum=minimum, supertrend_average=average,
+            forming_open=opening, parameters={'atr_period':18,'atr_multiplier':5,'reward_divisor':1.2})
     if not all(math.isfinite(float(v)) for v in (maximum, minimum, average)):
         return 'No finite SuperTrend levels'
     previous = frame.iloc[-1]
@@ -120,6 +124,9 @@ def aurum_cycle(gateway, symbol, rates):
     md = aurum_data(gateway, symbol, rates)
     rule_name = getattr(gateway, 'strategy', 'ema_cross')
     forecast = float(artifact.strategies[rule_name].generate(md).iloc[-1])
+    observe(gateway, forecast=forecast, entry_threshold=.25, rule_name=rule_name,
+            parameters=getattr(artifact.strategies[rule_name], 'params', {}),
+            artifact_manifest=getattr(artifact, 'manifest', {}))
     if not math.isfinite(forecast) or abs(forecast) < 0.25:
         return f'Aurum {rule_name} forecast {forecast:.4f}: below 0.25 trial entry threshold'
     if rule_name == 'donchian':
@@ -127,6 +134,7 @@ def aurum_cycle(gateway, symbol, rates):
         # Read the native state machine's ORIGINAL entry stop, not a newly anchored
         # ATR distance on each subsequent bar/addition. Aurum uses mid prices.
         native_stop = float(rule.stop_levels(md.bars)[-1])
+        observe(gateway, native_mid_stop=native_stop, protection='original Donchian; no fixed TP')
         if not math.isfinite(native_stop) or native_stop <= 0:
             return 'Original Donchian stop unavailable; signal skipped without fallback'
         side = 0 if forecast > 0 else 1
@@ -193,6 +201,7 @@ def sunrise_signals(symbol, rates):
 
 def sunrise_cycle(gateway, symbol, rates):
     signals, detail = sunrise_signals(symbol, rates)
+    observe(gateway, sunrise_signals=signals, sunrise_state_detail=detail)
     for signal in signals:
         detail += '; ' + submit(gateway, symbol, signal['side'], signal['sl'], signal['tp'])
     return detail

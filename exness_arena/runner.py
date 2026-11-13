@@ -30,6 +30,8 @@ def monn_cycle(gateway, symbol, rates):
     from strategies.ma_cross_strategy import MACross
     from order import OrderSide
     from trader import Trader
+    from .research import observe
+    observe(gateway, parameters={'fast_ma':10,'slow_ma':20,'type':'SMA','sl_fix_mode':'ADJ_SL','max_sl_pct':.25})
 
     frame = pd.DataFrame(rates)
     frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)
@@ -79,6 +81,8 @@ def crossover_cycle(gateway, symbol, rates):
             return symbol
 
     signal = CrossOverStrategy(ClosedBars()).signal()[1]
+    from .research import observe
+    observe(gateway, signal=signal.value, parameters={'fast_ma':20,'slow_ma':50})
     if signal not in (Signal.BUY, Signal.SELL):
         return "No crossover signal"
     side = 0 if signal == Signal.BUY else 1
@@ -130,7 +134,10 @@ def main(bot):
     parser.add_argument("--preflight", action="store_true", help="read-only account, data and import checks")
     parser.add_argument("--once", action="store_true")
     parser.add_argument('--audit-all', action='store_true', help='read-only validation of all registered strategies, without enabling them')
+    parser.add_argument('--research-once', action='store_true', help='record one paper-only decision per strategy/instrument; never submit live orders')
     args = parser.parse_args()
+    if args.research_once:
+        args.preflight = True
     os.environ["EXNESS_BOT_ID"] = bot
     from . import mt5 as gateway
 
@@ -168,7 +175,11 @@ def main(bot):
                         failures.append({'strategy': strategy, 'symbol': symbol, 'error': 'Insufficient closed-bar history'})
                     continue
                 if args.preflight:
-                    cycles[strategy](NoOrderGateway(gateway.for_strategy(strategy)), symbol, rates)
+                    if args.research_once:
+                        from .research import evaluate
+                        evaluate(cycles[strategy], gateway.for_strategy(strategy), bot, strategy, symbol, rates, paper=True)
+                    else:
+                        cycles[strategy](NoOrderGateway(gateway.for_strategy(strategy)), symbol, rates)
                 coverage(bot, symbol, "ready", "Closed M15 history and strategy validation passed", int(rates[-1]["time"]), strategy=strategy)
                 audited[strategy] = audited.get(strategy, 0) + 1
                 ready += 1
@@ -232,7 +243,8 @@ def main(bot):
                             scoped = gateway.for_strategy(strategy)
                             if claim_strategy_bar(bot, strategy, symbol, bar):
                                 try:
-                                    message = cycles[strategy](scoped, symbol, rates)
+                                    from .research import evaluate
+                                    message = evaluate(cycles[strategy], scoped, bot, strategy, symbol, rates)
                                 except Exception:
                                     detail = traceback.format_exc()
                                     strategy_halt(bot, strategy, detail)

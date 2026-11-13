@@ -1,4 +1,4 @@
-param([switch]$RemoveCombinedOpenRiskCap, [switch]$EnableIndexMinimumLots)
+param([switch]$RemoveCombinedOpenRiskCap, [switch]$EnableIndexMinimumLots, [switch]$SeedResearch)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $workspace '.arena-venv\Scripts\python.exe'
@@ -31,7 +31,8 @@ if ($EnableIndexMinimumLots) {
 # Old workers must exit before new discovery code updates the shared watchlist.
 # Otherwise an old inventory refresh can overwrite the expanded universe mid-preflight.
 foreach ($repo in $enabledBots) {
-    & $python (Join-Path $workspace "$repo\exness_trial.py") --preflight
+    $checkMode = if ($SeedResearch) { '--research-once' } else { '--preflight' }
+    & $python (Join-Path $workspace "$repo\exness_trial.py") $checkMode
     if ($LASTEXITCODE -ne 0) { throw "Preflight failed: $repo. Trial remains paused." }
 }
 if ($RemoveCombinedOpenRiskCap) {

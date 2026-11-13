@@ -9,6 +9,7 @@ import talib
 from .volume import entry_volume_cap
 from .common import REGISTRY, settings
 from .adapters import submit, WORKSPACE
+from .research import observe
 
 
 def monn_definition(strategy):
@@ -28,6 +29,7 @@ def monn_library_cycle(gateway, symbol, rates):
     import indicators as mta
 
     definition = monn_definition(gateway.strategy)
+    observe(gateway, original_definition=definition)
     frame = pd.DataFrame(rates)
     frame['time'] = pd.to_datetime(frame.time, unit='s', utc=True)
     frame = frame.rename(columns={'time': 'Open time', 'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'tick_volume': 'Volume'})
@@ -84,6 +86,7 @@ def python_library_cycle(gateway, symbol, rates):
         def get_symbol(self):return symbol
     classes = {'smc': SMCStrategy, 'trend_breakout': TrendBreakoutStrategy, 'combined': CombinedStrategy}
     signal = classes[gateway.strategy](ClosedBars()).signal()[1]
+    observe(gateway, signal=signal.value, rule_name=gateway.strategy)
     if signal not in (Signal.BUY, Signal.SELL):
         return f'Original {gateway.strategy}: no signal'
     atr = float(talib.ATR(frame.high, frame.low, frame.close, timeperiod=14).iloc[-1])

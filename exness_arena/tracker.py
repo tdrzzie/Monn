@@ -157,6 +157,13 @@ def collect():
             writer.writeheader()
             writer.writerows(records)
     health("tracker", "running", timestamp)
+    # Research uses a separate DB and never owns the live heartbeat or halt flags.
+    try:
+        from .research import collect as collect_research
+        collect_research(native, ps, ds)
+    except Exception as exc:
+        from .research import research_error
+        research_error('tracker sampling', exc)
     return data
 
 
@@ -164,6 +171,8 @@ HTML = """<!doctype html><meta charset=utf-8><title>Exness cent bot trial</title
 <style>body{font:15px system-ui;background:#10151d;color:#e3eaf4;padding:32px}h1{font-size:25px}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #344052}.muted{color:#9eb0c8}pre{white-space:pre-wrap}a{color:#85c4ff}</style>
 <h1>Exness cent bot trial</h1><p id=info></p><p class=muted>USC = US cents Â· 100 USC = $1 Â· Each ready bot has the same risk cap. Pending bots are excluded from the comparison.</p>
 <p id=risklimits></p>
+<h2>Paper-only research</h2><p id=researchinfo>Loading research observations...</p><p class=muted>Shadow results are hypothetical, independent per-signal experiments. Gross figures include spread, exclude commissions, swap and extra slippage, and do not represent a live portfolio. Live loss gates remain unchanged.</p>
+<table><thead><tr><th>Repo / strategy</th><th>Version</th><th>Mode</th><th>Exit variant</th><th>State</th><th>Paper trades</th><th>Gross USC</th><th>Mean R</th></tr></thead><tbody id=shadowrows></tbody></table>
 <table><thead><tr><th>Repository</th><th>Status</th><th>Magic</th><th>Closed / open</th><th>Closed net USC</th><th>Floating USC</th><th>Total USD</th><th>Win rate</th><th>Sampled DD USC</th></tr></thead><tbody id=rows></tbody></table>
 <h2>Strategy results</h2><p class=muted>Ownership and profitable additions are isolated by strategy. Shared account risk and existing repo loss backstops remain in force.</p>
 <table><thead><tr><th>Repository</th><th>Strategy</th><th>Status</th><th>Magic</th><th>Closed / open</th><th>Closed net USC</th><th>Floating USC</th><th>Total USD</th><th>Sampled DD USC</th></tr></thead><tbody id=strategyrows></tbody></table>
@@ -176,6 +185,7 @@ async function pairCoverage(){try{const d=await(await fetch('/api/results')).jso
 function fillTable(id,rows){const b=document.getElementById(id);b.replaceChildren();for(const values of rows){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td)}b.append(tr)}}
 async function strategies(){try{const d=await(await fetch('/api/results')).json();fillTable('strategyrows',(d.strategies||[]).map(r=>[r.repo,r.strategy,r.status.status,r.magic,r.closed_positions+' / '+r.open_positions,r.closed_net_usc.toFixed(3),r.floating_usc.toFixed(3),r.total_net_usd.toFixed(4),r.sampled_drawdown_usc.toFixed(3)]));fillTable('positionrows',(d.positions||[]).map(p=>[p.repo,p.strategy,p.ticket,p.symbol,p.direction,p.volume,p.stop_loss,p.take_profit,(p.profit_usc+p.swap_usc).toFixed(3)]))}catch(e){document.querySelector('#info').textContent='Strategy data unavailable: '+e}}strategies();setInterval(strategies,10000)
 async function limits(){try{const d=await(await fetch('/api/results')).json();const r=d.risk_limits;if(r)document.querySelector('#risklimits').textContent='Per-position risk: '+r.per_position_usc+' USC | Combined open-risk cap: '+(r.combined_open_risk_cap_usc===null?'disabled':r.combined_open_risk_cap_usc+' USC')+' | Strategy loss limit: '+r.strategy_loss_usc+' USC | Repo loss limit: '+r.repo_loss_usc+' USC | Account drawdown halt: '+(r.account_drawdown_fraction*100)+'%'}catch(e){}}limits();setInterval(limits,10000)
+async function research(){try{const d=await(await fetch('/api/research')).json();if(!d.counts)return;document.querySelector('#researchinfo').textContent=d.counts.research_decisions+' recorded decisions | '+d.counts.versions+' versions | '+d.counts.live_path+' live path samples | '+d.incomplete_decisions+' incomplete decisions | '+d.observations.length+' recent research observations';fillTable('shadowrows',(d.shadows||[]).map(r=>[r.bot+' / '+r.strategy,r.version_id.slice(0,10),r.mode,r.variant,r.status,r.count,r.gross_usc===null?'':r.gross_usc.toFixed(3),r.mean_r===null?'':r.mean_r.toFixed(3)]))}catch(e){document.querySelector('#researchinfo').textContent='Research status unavailable: '+e}}research();setInterval(research,10000)
 </script>"""
 
 
@@ -184,6 +194,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/results":
             payload = (STATE / "results.json").read_bytes()
             content_type = "application/json"
+        elif self.path == '/api/research':
+            target = STATE / 'research-summary.json'
+            payload = target.read_bytes() if target.exists() else b'{"status":"initializing","paper_only":true}'
+            content_type = 'application/json'
         elif self.path == "/":
             payload = HTML.encode()
             content_type = "text/html; charset=utf-8"

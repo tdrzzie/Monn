@@ -52,6 +52,10 @@ Unexpected live strategy evaluation errors quarantine that strategy persistently
 
 Read-only `exness_trial.py --audit-all` evaluates registered strategies without enabling them or sending orders. The expanded 35-instrument universe passes 280 Monn, 140 MT5-Python-Trading, 316 Aurum and 35 SuperTrend strategy/instrument checks; Sunrise retains eight original profile checks. No orders are sent by these audits. The five approved CFDs are UKOILc, USOILc, USTECc, US30c and US500c. Gold-only managed_gold and pair-specific Sunrise profiles are not expanded. Index lot ceilings now match the broker minimums: USTECc 0.05, US30c 0.05 and US500c 0.14. Other instruments, including oil, retain a 0.01 lot ceiling. Index orders still require broker-valued stop risk within the 3.50 USC ceiling and its existing execution reserve; signals that cannot fit are skipped. Ordinary stop-risk and execution checks remain mandatory.
 
+## Prospective research collection
+
+All enabled profiles record versioned research observations and independent paper-only exit variants from deployment onward. Live loss gates and ownership remain unchanged; the drawdown halt is not reset. Exact decision inputs and source/configuration hashes support replay, while unmatched historical trades retain unknown versions. See `Monn/RESEARCH.md` for the proposed/1R/3R variants, separate seeded/live cohorts, sampled excursions, gross-cost limitations, local exports and validation discipline. Shadow outcomes are not live returns and do not automatically change a strategy.
+
 ## Strategies not enabled
 
 - **Monn / zigzag_follower:** Lookup name exists, but no implementation or original configuration is present.
