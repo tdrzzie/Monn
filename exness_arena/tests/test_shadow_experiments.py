@@ -192,3 +192,36 @@ def test_slow_broker_sizing_never_holds_research_writer_lock(lab,monkeypatch):
     with research.connect() as db:
         assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==6
         assert db.execute("SELECT COUNT(*) FROM observations WHERE kind='during_broker_read'").fetchone()[0]==12
+
+
+def test_mfe_exit_values_all_prices_before_writing_stop_events(lab,monkeypatch):
+    import sqlite3
+    row,n=virtual(lab)
+    p=lab[2]
+    original=n.order_calc_profit
+    def checked(*args):
+        with sqlite3.connect(p/'research.sqlite3',timeout=.1) as other:
+            other.execute("INSERT INTO observations(time,kind,detail) VALUES(0,'during_exit_read','ok')")
+        return original(*args)
+    monkeypatch.setattr(n,'order_calc_profit',checked)
+    with research.connect() as db:
+        raw=[dict(time=int(row['opened']),open=100,high=107,low=98,close=99,spread=0)]
+        research.advance(db,n,row,None,raw,observed=row['opened']+900)
+        assert read(db,row)['exit_price']==99
+
+
+def test_live_path_quote_reads_do_not_block_other_research_writers(lab,monkeypatch):
+    import sqlite3
+    g,n,p=lab
+    with research.connect():
+        pass
+    original=n.symbol_info_tick
+    def checked(symbol):
+        with sqlite3.connect(p/'research.sqlite3',timeout=.1) as other:
+            other.execute("INSERT INTO observations(time,kind,detail) VALUES(0,'during_path_quote','ok')")
+        return original(symbol)
+    monkeypatch.setattr(n,'symbol_info_tick',checked)
+    positions=[S(identifier=i,magic=g.magic,symbol='EURUSDc',profit=1,swap=0,sl=1.09,tp=0,volume=.01) for i in (1,2)]
+    research.collect(n,positions,[])
+    with research.connect() as db:
+        assert db.execute('SELECT COUNT(*) FROM live_path').fetchone()[0]==2

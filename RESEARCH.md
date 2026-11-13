@@ -50,7 +50,7 @@ Shadow results are **gross hypothetical results**, not measured live returns. En
 
 Keep variants fixed while collecting a prospective cohort. Separate code/protection versions, seeded versus live-evaluation cohorts, costs, symbols and overlapping signal times when analyzing results. Hold out later data before selecting a change; one market session and correlated trades are not enough to establish an improvement. Nothing here automatically trains, optimizes or deploys a strategy.
 
-Broker sizing reads run before the decision write transaction; the collector commits each shadow independently, with its state and events atomic. This prevents long native reads or a large paper book from blocking all research writers.
+Broker sizing reads run before the decision write transaction; the collector commits each shadow independently, with its state and events atomic. A bounded 30-second SQLite busy wait matches the live journal for synchronized M15 bursts. Broker orders are never retried on a logging failure.
 
 Research failures are reported separately. They never retry a real submission or clear a live gate. A partially recorded decision stays `started`/`error` rather than being invented as a successful observation. Disk use grows with collected history; no automatic pruning or archival deletion is enabled.
 

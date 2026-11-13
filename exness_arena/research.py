@@ -58,7 +58,9 @@ def digest(value):
 @contextmanager
 def connect():
     STATE.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(STATE / 'research.sqlite3', timeout=5)
+    # Match the live journal's bounded busy wait during synchronized M15 bursts.
+    # Only journal writes wait; no broker order is retried on a logging failure.
+    db = sqlite3.connect(STATE / 'research.sqlite3', timeout=30)
     db.row_factory = sqlite3.Row
     db.execute('PRAGMA journal_mode=WAL')
     db.executescript('''
@@ -385,6 +387,7 @@ def advance(db, native, row, quote, bars, observed=None):
     if r['status']!='open':
         return
     risk=r['initial_risk'];state=json.loads(r.get('policy_state') or '{}')
+    stop_events=[]
     contract=native.symbol_info(r['symbol'])
     original_sl=r.get('initial_sl') or r['sl']
     effective=r.get('sl_effective_epoch') or r['opened']
@@ -402,8 +405,7 @@ def advance(db, native, row, quote, bars, observed=None):
         new=tighten(r,state,high,low,stamp,contract)
         if new is not None:
             old=r['sl'];r['sl']=new;effective=max(effective,stamp)
-            db.execute('INSERT INTO shadow_events(shadow_id,time,kind,detail) VALUES(?,?,?,?)',
-                       (r['id'],stamp,'virtual_stop_tightened',encode({'from':old,'to':new,'plan_id':r.get('plan_id'),
+            stop_events.append((r['id'],stamp,'virtual_stop_tightened',encode({'from':old,'to':new,'plan_id':r.get('plan_id'),
                          'effective_after':effective,'observed_mfe_r':r['mfe_r'],'paper_only':True})))
     outcome=None;closed=None
     for b in bars:
@@ -443,8 +445,11 @@ def advance(db, native, row, quote, bars, observed=None):
                     apply_stop(price,price,quote_time)
                 state['last_quote_msc']=quote_msc
                 closed=quote_time
+    # Finish every broker read before the first write in this shadow transaction.
+    gross=pnl(outcome[0]) if outcome else None
+    for event in stop_events:
+        db.execute('INSERT INTO shadow_events(shadow_id,time,kind,detail) VALUES(?,?,?,?)',event)
     if outcome:
-        gross=pnl(outcome[0])
         changed=db.execute("UPDATE shadows SET status='closed',closed=?,exit_price=?,exit_reason=?,gross_usc=?,r_multiple=? WHERE id=? AND status='open'",
                    (closed,outcome[0],outcome[1],gross,gross/risk,r['id']))
         if changed.rowcount:
@@ -479,6 +484,7 @@ def collect(native, positions, deals):
                         pnl=native.order_calc_profit(d.type,d.symbol,d.volume,d.price,sl)
                         if pnl is not None and math.isfinite(pnl) and pnl<0:
                             db.execute('INSERT OR IGNORE INTO live_initial_risk VALUES(?,?,?)',(d.position_id,-pnl,sl))
+            db.commit()
         for p in positions:
             if not resolve(p.magic,p.symbol): continue
             tick = native.symbol_info_tick(p.symbol)
@@ -487,6 +493,7 @@ def collect(native, positions, deals):
             db.execute('INSERT OR IGNORE INTO live_path VALUES(?,?,?,?,?,?,?,?,?,?)',
                        (p.identifier,int(observed*1000),p.profit,p.swap,tick.bid if tick else None,
                         tick.ask if tick else None,p.sl,p.tp,p.volume,booked))
+            db.commit()
         rows = db.execute("SELECT * FROM shadows WHERE status='open'").fetchall()
         # Do not hold the live-path write lock while fetching market data and
         # valuing thousands of independent counterfactuals. Each shadow's exit,
