@@ -2,6 +2,7 @@ import logging
 import pandas as pd
 from datetime import datetime
 import talib as ta
+from indicators import ta_compat as stream
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from .base_strategy import BaseStrategy
@@ -117,7 +118,7 @@ class PriceAction(BaseStrategy):
         if tf != self.tf:
             return
         chart = self.tfs_chart[self.tf]
-        self.ma_vol.loc[len(self.ma_vol)] = ta.stream.SMA(chart["Volume"], self.params["ma_vol"])
+        self.ma_vol.loc[len(self.ma_vol)] = stream.SMA(chart["Volume"], self.params["ma_vol"])
         last_Zz_pidx = self.zz_points[-1].pidx
         mta.zigzag_stream(chart, self.min_zz_ratio, self.zz_points)
         last_main_idx = self.main_zz_idx[-1]

@@ -12,9 +12,10 @@ def default_strategy(bot):
 
 
 def strategy_for_symbol(bot, symbol):
-    for name, spec in strategies(bot).items():
-        if symbol in spec.get('symbols', []):
-            return name
+    if REGISTRY[bot].get('runner') == 'sunrise':
+        for name, spec in strategies(bot).items():
+            if symbol in spec.get('symbols', []):
+                return name
     return default_strategy(bot)
 
 

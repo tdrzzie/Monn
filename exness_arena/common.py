@@ -38,6 +38,7 @@ def connect():
       CREATE TABLE IF NOT EXISTS strategy_samples(time TEXT, bot TEXT, strategy TEXT, net REAL, floating REAL, PRIMARY KEY(time,bot,strategy));
       CREATE TABLE IF NOT EXISTS strategy_decisions(bot TEXT, strategy TEXT, symbol TEXT, bar INTEGER, PRIMARY KEY(bot,strategy,symbol,bar));
       CREATE TABLE IF NOT EXISTS strategy_coverage(bot TEXT, strategy TEXT, symbol TEXT, time TEXT, status TEXT, detail TEXT, bar INTEGER, PRIMARY KEY(bot,strategy,symbol));
+      CREATE TABLE IF NOT EXISTS strategy_health(bot TEXT, strategy TEXT, time TEXT, status TEXT, detail TEXT, PRIMARY KEY(bot,strategy));
     """)
     return db
 
@@ -82,3 +83,18 @@ def claim_strategy_bar(bot, strategy, symbol, bar):
             db.execute('INSERT OR IGNORE INTO strategy_decisions VALUES(?,?,?,?)', (bot, strategy, symbol, int(bar)))
             return False
         return db.execute('INSERT OR IGNORE INTO strategy_decisions VALUES(?,?,?,?)', (bot, strategy, symbol, int(bar))).rowcount == 1
+
+
+def strategy_halt(bot, strategy, detail):
+    from .identity import strategy_key
+    with locked() as db:
+        db.execute('INSERT OR REPLACE INTO flags VALUES(?,?)', ('strategy_halt:' + strategy_key(bot, strategy), str(detail)))
+        db.execute('INSERT OR REPLACE INTO strategy_health VALUES(?,?,?,?,?)', (bot, strategy, now(), 'quarantined', str(detail)))
+        event(db, bot, 'strategy_quarantine', str(detail), strategy=strategy)
+
+
+def strategy_halt_reason(bot, strategy):
+    from .identity import strategy_key
+    with locked() as db:
+        row = db.execute('SELECT value FROM flags WHERE name=?', ('strategy_halt:' + strategy_key(bot, strategy),)).fetchone()
+        return row[0] if row else None

@@ -2,6 +2,7 @@ import logging
 import pandas as pd
 from datetime import datetime
 import talib as ta
+from indicators import ta_compat as stream
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from .base_strategy import BaseStrategy
@@ -56,7 +57,7 @@ class RSIRegularDivergence(BaseStrategy):
         if tf != self.tf:
             return
         chart = self.tfs_chart[self.tf]
-        self.rsi.loc[len(self.rsi)] = ta.stream.RSI(chart["Close"], self.params["rsi_len"])
+        self.rsi.loc[len(self.rsi)] = stream.RSI(chart["Close"], self.params["rsi_len"])
         if self.params["zz_type"] == "ZZ_CONV":
             mta.zigzag_conv_stream(chart, self.params["zz_conv_size"], self.min_zz_ratio, self.zz_points)
         else:

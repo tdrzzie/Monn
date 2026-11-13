@@ -2,6 +2,7 @@ import logging
 import pandas as pd
 from datetime import datetime
 import talib as ta
+from indicators import ta_compat as stream
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from .base_strategy import BaseStrategy
@@ -116,7 +117,7 @@ class BreakStrategy(BaseStrategy):
         if tf != self.tf:
             return
         chart = self.tfs_chart[self.tf]
-        self.ma_vol.loc[len(self.ma_vol)] = ta.stream.SMA(chart["Volume"], self.params["ma_vol"])
+        self.ma_vol.loc[len(self.ma_vol)] = stream.SMA(chart["Volume"], self.params["ma_vol"])
         last_Zz_pidx = self.zz_points[-1].pidx
         mta.zigzag_stream(chart, self.min_zz_ratio, self.zz_points)
         last_main_idx = self.main_zz_idx[-1]
@@ -196,7 +197,7 @@ class BreakStrategy(BaseStrategy):
             if (last_kline["High"] - last_kline["Close"]) > 0.5 * (last_kline["High"] - last_kline["Low"]):
                 return
             y_down_pct = get_y_on_line(self.down_trend_line, self.down_trend_line[1][0] + 1)
-            if last_kline["Close"] > y_down_pct and last_kline["Close"] > ta.stream.SMA(chart["Close"], 200):
+            if last_kline["Close"] > y_down_pct and last_kline["Close"] > stream.SMA(chart["Close"], 200):
                 sl = self.up_trend_line[1][1]
                 order = Order(
                     OrderType.MARKET,
@@ -222,7 +223,7 @@ class BreakStrategy(BaseStrategy):
             if (last_kline["Close"] - last_kline["Low"]) > 0.5 * (last_kline["High"] - last_kline["Low"]):
                 return
             y_up_pct = get_y_on_line(self.up_trend_line, self.up_trend_line[1][0] + 1)
-            if last_kline["Close"] < y_up_pct and last_kline["Close"] < ta.stream.SMA(chart["Close"], 200):
+            if last_kline["Close"] < y_up_pct and last_kline["Close"] < stream.SMA(chart["Close"], 200):
                 sl = self.down_trend_line[1][1]
                 order = Order(
                     OrderType.MARKET,

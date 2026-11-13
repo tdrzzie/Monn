@@ -13,8 +13,8 @@ import time
 import traceback
 from pathlib import Path
 
-from .common import REGISTRY, STATE, claim_strategy_bar, health, settings
-from .identity import enabled_for_symbol
+from .common import REGISTRY, STATE, claim_strategy_bar, health, settings, strategy_halt, strategy_halt_reason
+from .identity import enabled_for_symbol, strategies
 from .universe import refresh, coverage
 from .adapters import PROFILES, prepare_profile, profile_supported, history, NoOrderGateway
 
@@ -96,10 +96,39 @@ def crossover_cycle(gateway, symbol, rates):
     return f"Crossover {signal.value}; mandatory 2 ATR stop and 2R target"
 
 
+def cycle_for(bot, strategy):
+    spec = strategies(bot)[strategy]
+    kind = spec.get('adapter', REGISTRY[bot]['runner'])
+    if kind == 'monn':
+        return kind, monn_cycle
+    if kind == 'crossover':
+        return kind, crossover_cycle
+    if kind in ('monn_library', 'python_library'):
+        from .expanded import monn_library_cycle, python_library_cycle
+        return kind, monn_library_cycle if kind == 'monn_library' else python_library_cycle
+    if kind in PROFILES:
+        prepare_profile(kind)
+        return kind, PROFILES[kind]
+    raise RuntimeError('No reviewed adapter for strategy ' + strategy)
+
+
+def strategy_rates(gateway, bot, strategy, symbol):
+    spec = strategies(bot)[strategy]
+    kind = spec.get('adapter', REGISTRY[bot]['runner'])
+    return history(gateway, kind, symbol, count=spec.get('history_bars'))
+
+
+def minimum_bars(bot, strategy):
+    spec = strategies(bot)[strategy]
+    kind = spec.get('adapter', REGISTRY[bot]['runner'])
+    return spec.get('minimum_bars', 550 if kind in PROFILES else 150)
+
+
 def main(bot):
     parser = argparse.ArgumentParser()
     parser.add_argument("--preflight", action="store_true", help="read-only account, data and import checks")
     parser.add_argument("--once", action="store_true")
+    parser.add_argument('--audit-all', action='store_true', help='read-only validation of all registered strategies, without enabling them')
     args = parser.parse_args()
     os.environ["EXNESS_BOT_ID"] = bot
     from . import mt5 as gateway
@@ -110,20 +139,17 @@ def main(bot):
     if not gateway.initialize():
         raise SystemExit("Cannot initialize MT5")
     kind = REGISTRY[bot]['runner']
-    if kind == "monn":
-        from strategies.ma_cross_strategy import MACross  # noqa: F401
-        cycle = monn_cycle
-    elif kind == 'crossover':
-        from mt5_trading.domain.strategies.cross_over_strategy import CrossOverStrategy  # noqa: F401
-        cycle = crossover_cycle
-    elif kind in PROFILES:
-        prepare_profile(kind)
-        cycle = PROFILES[kind]
-    else:
-        raise RuntimeError('Unknown trial strategy profile: ' + str(kind))
     watchlist = refresh(gateway)
     c = settings()
+    if args.audit_all:
+        args.preflight = True
+        c = dict(c)
+        c['enabled_strategies'] = dict(c.get('enabled_strategies', {}))
+        c['enabled_strategies'][bot] = list(strategies(bot))
+    cycles = {name: cycle_for(bot, name)[1] for name in c.get('enabled_strategies', {}).get(bot, list(strategies(bot)))}
     ready = 0
+    failures = []
+    audited = {}
     for symbol in watchlist:
         if not profile_supported(kind, symbol):
             coverage(bot, symbol, 'unsupported_profile', 'No original Sunrise parameter profile; no substituted strategy')
@@ -131,20 +157,35 @@ def main(bot):
         if not gateway.symbol_select(symbol, True):
             coverage(bot, symbol, "unavailable", "Broker symbol selection failed")
             continue
-        rates = history(gateway, kind, symbol)
-        minimum = 550 if kind in PROFILES else 150
-        if rates is None or len(rates) < minimum:
-            coverage(bot, symbol, "waiting_history", f"Need at least {minimum} closed M15 bars")
-            continue
         for strategy in enabled_for_symbol(bot, symbol, c):
-            if args.preflight and kind in PROFILES:
-                cycle(NoOrderGateway(gateway.for_strategy(strategy)), symbol, rates)
-            coverage(bot, symbol, "ready", "Closed M15 history available", int(rates[-1]["time"]), strategy=strategy)
-        ready += 1
+            try:
+                rates = strategy_rates(gateway, bot, strategy, symbol)
+                minimum = minimum_bars(bot, strategy)
+                if rates is None or len(rates) < minimum:
+                    coverage(bot, symbol, 'waiting_history', f'Need {minimum} closed M15 bars', strategy=strategy)
+                    if args.audit_all:
+                        failures.append({'strategy': strategy, 'symbol': symbol, 'error': 'Insufficient closed-bar history'})
+                    continue
+                if args.preflight:
+                    cycles[strategy](NoOrderGateway(gateway.for_strategy(strategy)), symbol, rates)
+                coverage(bot, symbol, "ready", "Closed M15 history and strategy validation passed", int(rates[-1]["time"]), strategy=strategy)
+                audited[strategy] = audited.get(strategy, 0) + 1
+                ready += 1
+            except Exception as exc:
+                if not args.audit_all:
+                    raise
+                failures.append({'strategy': strategy, 'symbol': symbol, 'error': type(exc).__name__ + ': ' + str(exc)})
     if not ready:
         raise RuntimeError("No pairs have sufficient history; no orders sent")
     if args.preflight:
-        print(f"{bot}: PASS account pin, strategy imports and M15 history on {ready}/{len(watchlist)} pairs; no orders sent")
+        if args.audit_all:
+            import json
+            report = {'repo': bot, 'passed_pairs_by_strategy': audited, 'failures': failures, 'orders_sent': 0}
+            (STATE / ('strategy-audit-' + bot + '.json')).write_text(json.dumps(report, indent=2))
+            print(json.dumps(report), flush=True)
+            if failures:
+                raise SystemExit(1)
+        print(f"{bot}: PASS {len(audited)} strategy profiles / {ready} pair checks; no orders sent")
         return
     health(bot, "running", "Waiting for a new closed bar")
     print(f"{bot}: started, magic={REGISTRY[bot]['magic']}, risk cap={c['risk_budget_usc']:.4f} USC", flush=True)
@@ -176,16 +217,27 @@ def main(bot):
                         if not gateway.symbol_select(symbol, True):
                             coverage(bot, symbol, "unavailable", "Broker symbol selection failed")
                             continue
-                        rates = history(gateway, kind, symbol)
-                        minimum = 550 if kind in PROFILES else 150
-                        if rates is None or len(rates) < minimum:
-                            coverage(bot, symbol, "waiting_history", f"Need at least {minimum} closed M15 bars")
-                            continue
-                        bar = int(rates[-1]["time"])
                         for strategy in enabled_for_symbol(bot, symbol, settings()):
+                            reason = strategy_halt_reason(bot, strategy)
+                            if reason:
+                                coverage(bot, symbol, 'quarantined', reason, strategy=strategy)
+                                continue
+                            rates = strategy_rates(gateway, bot, strategy, symbol)
+                            minimum = minimum_bars(bot, strategy)
+                            if rates is None or len(rates) < minimum:
+                                coverage(bot, symbol, 'waiting_history', f'Need {minimum} closed M15 bars', strategy=strategy)
+                                continue
+                            bar = int(rates[-1]['time'])
                             scoped = gateway.for_strategy(strategy)
                             if claim_strategy_bar(bot, strategy, symbol, bar):
-                                message = cycle(scoped, symbol, rates)
+                                try:
+                                    message = cycles[strategy](scoped, symbol, rates)
+                                except Exception:
+                                    detail = traceback.format_exc()
+                                    strategy_halt(bot, strategy, detail)
+                                    coverage(bot, symbol, 'quarantined', detail, bar, strategy=strategy)
+                                    print(f'[{strategy}] quarantined: {detail}', flush=True)
+                                    continue
                                 coverage(bot, symbol, "evaluated", message, bar, strategy=strategy)
                                 evaluated += 1
                                 messages.append(symbol + " [" + strategy + "]: " + message)

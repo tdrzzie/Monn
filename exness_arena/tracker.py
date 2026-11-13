@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import MetaTrader5 as native
-from .common import REGISTRY, STATE, health, locked, now, settings
+from .common import REGISTRY, STATE, PACKAGE, health, locked, now, settings
 from .guard import Gateway
 from .identity import specs, resolve, default_strategy, strategy_key
 
@@ -121,16 +121,19 @@ def collect():
                     for b, s, t, status, detail, bar in db.execute("SELECT * FROM coverage ORDER BY bot,symbol")]
         strategy_coverage = [{'repo': b, 'strategy': strategy, 'symbol': s, 'time': t, 'status': status, 'detail': detail, 'last_bar': bar}
                              for b, strategy, s, t, status, detail, bar in db.execute('SELECT * FROM strategy_coverage ORDER BY bot,strategy,symbol')]
+        strategy_health = {strategy_key(b, s): {'time': t, 'status': status, 'detail': detail}
+                           for b, s, t, status, detail in db.execute('SELECT * FROM strategy_health')}
     for row in rows:
         row["status"] = statuses.get(row["repo"], {"status": "blocked", "detail": REGISTRY[row["repo"]].get("blocked", "not started")})
     for row in strategy_rows:
-        row['status'] = statuses.get(row['repo'], {'status': 'not_started'})
+        row['status'] = strategy_health.get(row['strategy_key'], statuses.get(row['repo'], {'status': 'not_started'}))
         if row['repo'] in cfg['enabled_bots'] and row['strategy'] not in cfg.get('enabled_strategies', {}).get(row['repo'], [s['strategy'] for s in strategy_specs.values() if s['repo'] == row['repo']]):
             row['status'] = {'status': 'disabled', 'detail': 'Strategy is registered but not enabled'}
     data = {"updated_utc": timestamp, "currency": "USC", "rows": rows,
             "halt": halt[0] if halt else None, "events": events, "unallocated_fees_usc": unallocated,
             "watchlist": cfg["symbols"], "coverage": coverage,
             "strategies": strategy_rows, "positions": position_rows, "strategy_coverage": strategy_coverage,
+            "compatibility": json.loads((PACKAGE / 'compatibility.json').read_text()) if (PACKAGE / 'compatibility.json').exists() else {},
             "position_policy": {"mode": "hedge_with_profitable_additions", "max_positions_per_pair_per_bot": None,
                                 "max_positions_per_bot": None, "scope": "repo + strategy + pair + direction",
                                 "additions_require": "every same-strategy same-direction position positive after swap and opening fees"},

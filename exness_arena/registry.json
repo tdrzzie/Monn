@@ -6,6 +6,55 @@
     "strategies": {
       "ma_cross": {
         "magic": 26111301
+      },
+      "break_strategy": {
+        "magic": 26111701,
+        "adapter": "monn_library",
+        "config": "break_strategy_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "macd_divergence": {
+        "magic": 26111702,
+        "adapter": "monn_library",
+        "config": "macd_trading_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "ma_heikin_ashi": {
+        "magic": 26111703,
+        "adapter": "monn_library",
+        "config": "ma_hekin_ashi_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "price_action": {
+        "magic": 26111704,
+        "adapter": "monn_library",
+        "config": "price_action_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "rsi_hidden_divergence": {
+        "magic": 26111705,
+        "adapter": "monn_library",
+        "config": "rsi_hidden_divergence_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "rsi_regular_divergence": {
+        "magic": 26111706,
+        "adapter": "monn_library",
+        "config": "rsi_regular_divergence_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "trend_following": {
+        "magic": 26111707,
+        "adapter": "monn_library",
+        "config": "trend_following_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550
       }
     }
   },
@@ -16,6 +65,24 @@
     "strategies": {
       "crossover": {
         "magic": 26111302
+      },
+      "smc": {
+        "magic": 26111601,
+        "adapter": "python_library",
+        "history_bars": 300,
+        "minimum_bars": 150
+      },
+      "trend_breakout": {
+        "magic": 26111602,
+        "adapter": "python_library",
+        "history_bars": 300,
+        "minimum_bars": 150
+      },
+      "combined": {
+        "magic": 26111603,
+        "adapter": "python_library",
+        "history_bars": 300,
+        "minimum_bars": 150
       }
     }
   },
@@ -92,6 +159,63 @@
     "strategies": {
       "ema_cross": {
         "magic": 26111305
+      },
+      "tsmom": {
+        "magic": 26111801,
+        "adapter": "aurum",
+        "history_bars": 2000,
+        "minimum_bars": 1500
+      },
+      "donchian": {
+        "magic": 26111802,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "kalman_trend": {
+        "magic": 26111803,
+        "adapter": "aurum",
+        "history_bars": 1200,
+        "minimum_bars": 750
+      },
+      "zscore_fade": {
+        "magic": 26111804,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "rsi2": {
+        "magic": 26111805,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "bollinger_revert": {
+        "magic": 26111806,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "vol_squeeze": {
+        "magic": 26111807,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "orb": {
+        "magic": 26111808,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550
+      },
+      "managed_gold": {
+        "magic": 26111809,
+        "adapter": "aurum",
+        "history_bars": 8000,
+        "minimum_bars": 6000,
+        "symbols": [
+          "XAUUSDc"
+        ]
       }
     }
   },

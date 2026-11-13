@@ -2,6 +2,7 @@ import logging
 import pandas as pd
 from datetime import datetime
 import talib as ta
+from indicators import ta_compat as stream
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from .base_strategy import BaseStrategy
@@ -26,7 +27,7 @@ class MACross(BaseStrategy):
         self.state = None
         self.trend = None
         self.ma_func = ta.SMA if self.params["type"] == "SMA" else ta.EMA
-        self.ma_stream_func = ta.stream.SMA if self.params["type"] == "SMA" else ta.stream.EMA
+        self.ma_stream_func = stream.SMA if self.params["type"] == "SMA" else stream.EMA
 
     def attach(self, tfs_chart):
         self.tfs_chart = tfs_chart

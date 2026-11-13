@@ -2,6 +2,7 @@ import logging
 import pandas as pd
 from datetime import datetime
 import talib as ta
+from indicators import ta_compat as stream
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from .base_strategy import BaseStrategy
@@ -68,7 +69,7 @@ class MACDDivergence(BaseStrategy):
         if tf != self.tf:
             return
         chart = self.tfs_chart[self.tf]
-        macd, macdsignal, macdhist = ta.stream.MACD(
+        macd, macdsignal, macdhist = stream.MACD(
             chart["Close"],
             self.params["macd_inputs"]["fast_len"],
             self.params["macd_inputs"]["slow_len"],

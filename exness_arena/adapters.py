@@ -89,32 +89,37 @@ def aurum_data(gateway, symbol, rates):
 
 def aurum_artifact(gateway, symbol, rates):
     """Verified native Aurum artifact for the deterministic, non-trainable EMA rule."""
-    from aurum.strategies.trend import EMACrossover
+    from aurum.strategies.base import get_strategy
     from aurum.live.runner import save_artifact, load_artifact
-    if symbol not in _artifacts:
-        path = STATE/'artifacts'/'aurum_ema'/symbol
+    rule_name = getattr(gateway, 'strategy', 'ema_cross')
+    key = symbol if rule_name == 'ema_cross' else (rule_name, symbol)
+    if key not in _artifacts:
+        path = STATE/'artifacts'/'aurum_ema'/symbol if rule_name == 'ema_cross' else STATE/'artifacts'/'aurum_rules'/rule_name/symbol
         if not (path/'manifest.json').exists():
             md = aurum_data(gateway, symbol, rates)
-            rule = EMACrossover()  # Original 32/128 spans and volatility normalization.
+            rule = get_strategy(rule_name)
+            if rule.trainable:
+                raise RuntimeError('Training-dependent rules require a separately validated artifact')
             rule.fit(md)
-            save_artifact(path, strategies={'ema_cross': rule}, symbol=symbol, timeframe='M15',
-                training={'cutoff': md.bars.available_at.iloc[-1].isoformat(), 'profile': 'cent_trial_deterministic_ema'},
-                notes='Original non-trainable EMA rule; shared guard uses broker-native USC valuation. Not the full Aurum portfolio or LLM desk.')
+            save_artifact(path, strategies={rule_name: rule}, symbol=symbol, timeframe='M15',
+                training={'cutoff': md.bars.available_at.iloc[-1].isoformat(), 'profile': 'cent_trial_deterministic_'+rule_name},
+                notes='Original non-trainable rule; shared guard uses broker-native USC valuation. Not the full Aurum portfolio or LLM desk.')
         artifact = load_artifact(path)
-        if artifact.symbol != symbol or artifact.timeframe != 'M15' or 'ema_cross' not in artifact.strategies:
+        if artifact.symbol != symbol or artifact.timeframe != 'M15' or rule_name not in artifact.strategies:
             raise RuntimeError('Aurum artifact does not match the selected trial profile')
         if len(rates) <= artifact.max_lookback:
             raise RuntimeError('Insufficient Aurum strategy warmup')
-        _artifacts[symbol] = artifact
-    return _artifacts[symbol]
+        _artifacts[key] = artifact
+    return _artifacts[key]
 
 
 def aurum_cycle(gateway, symbol, rates):
     artifact = aurum_artifact(gateway, symbol, rates)
     md = aurum_data(gateway, symbol, rates)
-    forecast = float(artifact.strategies['ema_cross'].generate(md).iloc[-1])
+    rule_name = getattr(gateway, 'strategy', 'ema_cross')
+    forecast = float(artifact.strategies[rule_name].generate(md).iloc[-1])
     if not math.isfinite(forecast) or abs(forecast) < 0.25:
-        return f'Aurum EMA forecast {forecast:.4f}: below 0.25 trial entry threshold'
+        return f'Aurum {rule_name} forecast {forecast:.4f}: below 0.25 trial entry threshold'
     frame = pd.DataFrame(rates)
     atr = float(talib.ATR(frame.high, frame.low, frame.close, timeperiod=14).iloc[-1])
     if not math.isfinite(atr) or atr <= 0:
@@ -124,7 +129,7 @@ def aurum_cycle(gateway, symbol, rates):
     entry = tick.ask if side == 0 else tick.bid
     sl = entry - 2 * atr if side == 0 else entry + 2 * atr
     tp = entry + 4 * atr if side == 0 else entry - 4 * atr
-    return f'Aurum EMA forecast {forecast:.4f}; ' + submit(gateway, symbol, side, sl, tp)
+    return f'Aurum {rule_name} forecast {forecast:.4f}; ' + submit(gateway, symbol, side, sl, tp)
 
 
 def sunrise_signals(symbol, rates):
@@ -196,8 +201,8 @@ def profile_supported(kind, symbol):
     return kind != 'sunrise' or symbol in SUNRISE_SYMBOLS
 
 
-def history(gateway, kind, symbol):
-    count = 600 if kind in PROFILES else 300
+def history(gateway, kind, symbol, count=None):
+    count = count or (600 if kind in PROFILES else 300)
     rates = gateway.copy_rates_from_pos(symbol, gateway.TIMEFRAME_M15, 1, count)
     if kind != 'sunrise' or rates is None or not len(rates):
         return rates

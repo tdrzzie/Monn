@@ -1,0 +1,27 @@
+{
+  "Monn": {
+    "enabled_candidates": ["ma_cross", "break_strategy", "macd_divergence", "ma_heikin_ashi", "price_action", "rsi_hidden_divergence", "rsi_regular_divergence", "trend_following"],
+    "excluded": {"zigzag_follower": "Lookup name exists, but no implementation or original configuration is present"}
+  },
+  "MT5-Python-Trading": {
+    "enabled_candidates": ["crossover", "smc", "trend_breakout", "combined"],
+    "excluded": {}
+  },
+  "tradingbot": {
+    "enabled_candidates": ["ema_cross", "tsmom", "donchian", "kalman_trend", "zscore_fade", "rsi2", "bollinger_revert", "vol_squeeze", "orb", "managed_gold"],
+    "excluded": {
+      "macro_factor": "No point-in-time DXY and real-yield feed configured",
+      "risk_off": "No point-in-time VIX and DXY feed configured",
+      "intraday_seasonality": "Requires a separately validated fitted cost-aware time-bucket artifact",
+      "ml_gbm": "Requires a validated trained model and fitted feature pipeline",
+      "meta_label": "Requires a validated trained primary/meta-label model and feature pipeline",
+      "rl_ppo": "No validated trained policy artifact",
+      "regime_switch": "No validated fitted regime model"
+    }
+  },
+  "mt5_live_trading_bot": {
+    "enabled_candidates": ["sunrise_eurusd", "sunrise_gbpusd", "sunrise_xauusd", "sunrise_audusd", "sunrise_xagusd", "sunrise_usdchf", "sunrise_eurjpy", "sunrise_usdjpy"],
+    "excluded": {"placeholder_signal_adapter": "Explicitly marked as placeholder upstream; not a separate validated strategy"}
+  },
+  "Forex-Trading-Bot": {"enabled_candidates": ["supertrend"], "excluded": {}}
+}

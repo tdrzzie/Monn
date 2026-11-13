@@ -137,6 +137,8 @@ class Gateway:
         c = self.cfg()
         if (STATE / "STOP").exists() or db.execute("SELECT 1 FROM flags WHERE name='halt'").fetchone():
             raise GuardError("Trial is halted; new entries blocked")
+        if db.execute('SELECT 1 FROM flags WHERE name=?', ('strategy_halt:' + self.key,)).fetchone():
+            raise GuardError('Strategy is quarantined; new entries blocked')
         if self.bot not in c["enabled_bots"]:
             raise GuardError("Bot has not passed readiness checks")
         if self.strategy not in c.get('enabled_strategies', {}).get(self.bot, list(strategies(self.bot))):
