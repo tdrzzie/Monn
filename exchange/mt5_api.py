@@ -3,6 +3,8 @@ import logging
 from datetime import datetime, timedelta
 import pandas as pd
 import MetaTrader5 as mt5
+if __import__("os").environ.get("EXNESS_BOT_ID"):
+    from exness_arena import mt5
 
 bot_logger = logging.getLogger("bot_logger")
 

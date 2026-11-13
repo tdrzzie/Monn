@@ -4,6 +4,8 @@ import logging
 from trade import Trade
 from order import Order, OrderType, OrderSide, OrderType
 import MetaTrader5 as mt5
+if __import__("os").environ.get("EXNESS_BOT_ID"):
+    from exness_arena import mt5
 
 bot_logger = logging.getLogger("bot_logger")
 
@@ -21,6 +23,7 @@ class MT5OrderTemplate:
     def get_main_order(self):
         params = {
             "symbol": self.symbol,
+            "magic": 26111301,
             "volume": self.volume,
             "type_filling": mt5.ORDER_FILLING_IOC,
             "type_time": mt5.ORDER_TIME_GTC,
@@ -42,6 +45,7 @@ class MT5OrderTemplate:
         params = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": self.symbol,
+            "magic": 26111301,
             "volume": self.volume,
             "position": None,
             "price": None,

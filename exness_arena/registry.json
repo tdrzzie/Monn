@@ -1,0 +1,9 @@
+{
+  "Monn": {"magic": 26111301, "runner": "monn"},
+  "MT5-Python-Trading": {"magic": 26111302, "runner": "crossover"},
+  "mt5_live_trading_bot": {"magic": 26111303, "runner": null, "blocked": "GUI strategy state and restart reconciliation require further validation"},
+  "claude-trader": {"magic": 26111304, "runner": null, "blocked": "Claude API credentials and cent currency prompts not configured"},
+  "tradingbot": {"magic": 26111305, "runner": null, "blocked": "Aurum fitted artifact and USC-aware instrument valuation not validated"},
+  "Forex-Trading-Bot": {"magic": 26111306, "runner": null, "blocked": "Interactive startup and balance-based sizing require further adaptation"},
+  "EA31337": {"magic": 26111307, "runner": null, "blocked": "Missing MQL dependencies and compiled EX5; Python execution guard cannot protect native EA"}
+}

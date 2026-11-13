@@ -132,3 +132,7 @@ Draft.ipynb
 *.csv
 test_symbol_trading_config.json
 ReportTuning.ipynb
+# Local cent trial account state and temporary test files
+.exness-arena/
+.arena-test-*/
+__pycache__/
