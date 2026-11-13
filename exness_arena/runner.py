@@ -24,31 +24,26 @@ def close_owned(gateway, position):
 
 def monn_cycle(gateway, symbol, rates):
     import pandas as pd
-    from strategies.ma_cross_strategy import MACross, IN_BUYING, IN_SELLING
-    from order import Order, OrderType, OrderSide, OrderStatus
+    from strategies.ma_cross_strategy import MACross
+    from order import OrderSide
     from trader import Trader
 
     frame = pd.DataFrame(rates)
     frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)
     frame = frame.rename(columns={"time": "Open time", "open": "Open", "high": "High", "low": "Low", "close": "Close", "tick_volume": "Volume"})
     positions = gateway.positions_get(symbol=symbol)
-    exit_requested = False
 
     class Bridge:
         fix_order = Trader.fix_order
 
         def create_trade(self, order, volume):
             side = 0 if order.side == OrderSide.BUY else 1
-            if any(p.type != side for p in positions):
-                return  # Never add against an existing position awaiting a confirmed exit.
             result = gateway.order_send({"action": gateway.TRADE_ACTION_DEAL, "symbol": symbol,
                 "type": side, "volume": volume,
                 "sl": order.sl or 0, "tp": order.tp or 0})
             order["trade_id"] = getattr(result, "order", 0)
 
         def close_trade(self, order):
-            nonlocal exit_requested
-            exit_requested = True
             for p in positions:
                 if p.ticket == order["trade_id"]:
                     close_owned(gateway, p)
@@ -58,20 +53,10 @@ def monn_cycle(gateway, symbol, rates):
     strategy.set_max_sl_pct(0.25)
     strategy.attach({"15m": frame})
     strategy.attach_trader(Bridge())
-    for p in positions:
-        order = Order(OrderType.MARKET, OrderSide.BUY if p.type == 0 else OrderSide.SELL,
-                      p.price_open, status=OrderStatus.FILLED)
-        order["trade_id"] = p.ticket
-        order.sl, order.tp = p.sl, p.tp
-        strategy.orders_opening.append(order)
-    for side in {p.type for p in positions}:
-        strategy.state = IN_BUYING if side == 0 else IN_SELLING
-        strategy.check_signal()
-    if len(positions) < 2 and not exit_requested:
-        # A fresh qualifying closed-bar signal may fill the second slot.
-        strategy.state = None
-        strategy.orders_opening = []
-        strategy.check_signal()
+    # Evaluate the entry signal independently of existing positions. Opposite signals
+    # can hedge rather than liquidate. The shared guard decides whether a profitable
+    # same-direction add-on is eligible; existing SL/TP remain on the server.
+    strategy.check_signal()
     return "MACross evaluated closed M15 bar; owned positions=" + str(len(positions))
 
 
@@ -94,15 +79,8 @@ def crossover_cycle(gateway, symbol, rates):
     if signal not in (Signal.BUY, Signal.SELL):
         return "No crossover signal"
     side = 0 if signal == Signal.BUY else 1
-    positions = gateway.positions_get(symbol=symbol)
-    opposite = [p for p in positions if p.type != side]
-    for p in opposite:
-        close_owned(gateway, p)
-    # Reversal waits for the next closed bar; no close/open race or double-risk interval.
-    if opposite:
-        return "Managed reversal; waiting for next closed bar before re-entry"
-    if len(positions) >= 2:
-        return "Two positions already open on this pair for this bot"
+    # Do not close opposite positions merely because the signal changes. A first
+    # position in either direction is independent; profitable add-ons are guard-gated.
     atr = float(talib.ATR(frame.high, frame.low, frame.close, timeperiod=14).iloc[-1])
     if not atr > 0:
         return "ATR unavailable"

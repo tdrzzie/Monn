@@ -84,7 +84,8 @@ def collect():
     data = {"updated_utc": timestamp, "currency": "USC", "rows": rows,
             "halt": halt[0] if halt else None, "events": events, "unallocated_fees_usc": unallocated,
             "watchlist": cfg["symbols"], "coverage": coverage,
-            "position_policy": {"max_positions_per_pair_per_bot": 2, "max_positions_per_bot": None},
+            "position_policy": {"mode": "hedge_with_profitable_additions", "max_positions_per_pair_per_bot": None,
+                                "max_positions_per_bot": None, "additions_require": "every same-direction position positive after swap and opening fees"},
             "note": "USC / 100 = USD. Net includes deal fees and swap. Drawdown is sampled every 10 seconds. Shared equity/margin and slippage affect comparisons."}
     target = STATE / "results.json"
     temp = target.with_suffix(".tmp")

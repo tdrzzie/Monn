@@ -122,7 +122,7 @@ class Gateway:
             raise GuardError("Broker stop-loss valuation unavailable")
         return max(0.0, -pnl)
 
-    def _entry_limits(self, db, account, ps, symbol):
+    def _entry_limits(self, db, account, ps, symbol, side):
         c = self.cfg()
         if (STATE / "STOP").exists() or db.execute("SELECT 1 FROM flags WHERE name='halt'").fetchone():
             raise GuardError("Trial is halted; new entries blocked")
@@ -135,12 +135,20 @@ class Gateway:
         if account.equity <= c["initial_equity_usc"] * (1 - c["account_loss_fraction"]):
             db.execute("INSERT OR REPLACE INTO flags VALUES('halt','account drawdown')")
             raise GuardError("Account-wide drawdown limit reached")
-        if sum(p.magic == self.magic and p.symbol == symbol for p in ps) >= 2:
-            raise GuardError("Two-position-per-pair-per-bot limit")
         start = datetime.fromtimestamp(c["start_epoch"], timezone.utc)
         deals = self.native.history_deals_get(start, datetime.now(timezone.utc))
         if deals is None:
             raise GuardError("Deal history unavailable")
+        same_direction = [p for p in ps if p.magic == self.magic and p.symbol == symbol and p.type == side]
+        for p in same_direction:
+            # Every existing position in this direction must be profitable individually.
+            # Include swap and known opening fees, conservatively retaining all entry fees
+            # after partial closes. A winning basket cannot conceal a losing add-on.
+            entry_fees = sum(d.commission + getattr(d, "fee", 0.0) for d in deals
+                             if d.position_id == p.identifier and d.entry == 0)
+            pnl = p.profit + p.swap + entry_fees
+            if not math.isfinite(pnl) or pnl <= 0:
+                raise GuardError("Same-direction additions require every existing position to be profitable after swap and opening fees")
         owners = {d.position_id for d in deals if d.magic == self.magic}
         owners.update(r[0] for r in db.execute("SELECT position_id FROM owners WHERE bot=?", (self.bot,)))
         net = sum(d.profit + d.swap + d.commission + getattr(d, "fee", 0) for d in deals if d.position_id in owners)
@@ -189,7 +197,9 @@ class Gateway:
             if not c.get("live", False):
                 raise GuardError("Live order submission is disabled")
             r["symbol"] = self.symbol(r.get("symbol", ""))
-            total, net = self._entry_limits(db, account, ps, r["symbol"])
+            if r.get("type") not in (n.ORDER_TYPE_BUY, n.ORDER_TYPE_SELL):
+                raise GuardError("Invalid order direction")
+            total, net = self._entry_limits(db, account, ps, r["symbol"], r["type"])
             if r.get("type") not in (n.ORDER_TYPE_BUY, n.ORDER_TYPE_SELL):
                 raise GuardError("Invalid order direction")
         s = n.symbol_info(r["symbol"])

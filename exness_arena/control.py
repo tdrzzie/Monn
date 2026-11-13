@@ -31,7 +31,7 @@ def configure():
             "symbol_map": {"EURUSD": "EURUSDc", "XAUUSD": "XAUUSDc", "XAUUSDm": "XAUUSDc"},
             "enabled_bots": ["Monn", "MT5-Python-Trading"], "risk_budget_usc": risk,
             "bot_loss_budget_usc": risk * 5, "total_risk_budget_usc": risk * 2,
-            "account_loss_fraction": 0.01, "max_positions_per_pair_per_bot": 2,
+            "account_loss_fraction": 0.01, "position_policy": "hedge_with_profitable_additions",
             "max_volume": 0.1, "max_quote_age_seconds": 30,
             "excluded_existing_positions": [p.identifier for p in ps]}
         target.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
