@@ -3,8 +3,10 @@ $workspace = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $workspace '.arena-venv\Scripts\python.exe'
 $state = Join-Path $PSScriptRoot '.exness-arena'
 $env:PYTHONPATH = $PSScriptRoot
+$settings = Get-Content -LiteralPath (Join-Path $state 'settings.json') -Raw | ConvertFrom-Json
+$enabledBots = @($settings.enabled_bots)
 if (Test-Path (Join-Path $state 'STOP')) { throw 'Trial is paused. Inspect state before manually resuming.' }
-foreach ($repo in @('Monn', 'MT5-Python-Trading')) {
+foreach ($repo in $enabledBots) {
     & $python (Join-Path $workspace "$repo\exness_trial.py") --preflight
     if ($LASTEXITCODE -ne 0) { throw "Preflight failed: $repo" }
 }
@@ -22,7 +24,7 @@ try {
     } while ((Get-Date) -lt $deadline)
     if (-not $snapshot) { throw 'Tracker did not become healthy' }
     $records = @(@{repo='tracker'; pid=$tracker.Id})
-    foreach ($repo in @('Monn', 'MT5-Python-Trading')) {
+    foreach ($repo in $enabledBots) {
         $process = Start-Process -FilePath $python -ArgumentList '-u',(Join-Path $workspace "$repo\exness_trial.py") -WorkingDirectory (Join-Path $workspace $repo) -WindowStyle Hidden -RedirectStandardOutput (Join-Path $state "$repo.out.log") -RedirectStandardError (Join-Path $state "$repo.err.log") -PassThru
         $records += @{repo=$repo; pid=$process.Id}
     }

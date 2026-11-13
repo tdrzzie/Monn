@@ -51,7 +51,7 @@ def summarize(deals, positions, owners, cfg, samples=None):
             "total_net_usc": booked + floating, "total_net_usd": (booked + floating) / 100,
             "sampled_drawdown_usc": drawdown, "risk_budget_usc": cfg["risk_budget_usc"],
             "open_positions": sum(owners.get(p.identifier) == bot for p in positions),
-            "api_cost_usd": 0.0 if bot in ("Monn", "MT5-Python-Trading") else None})
+            "api_cost_usd": 0.0 if bot in ("Monn", "MT5-Python-Trading", "tradingbot", "Forex-Trading-Bot", "mt5_live_trading_bot") else None})
     return result, unallocated
 
 

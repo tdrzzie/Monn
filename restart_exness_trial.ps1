@@ -3,6 +3,8 @@ $workspace = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $workspace '.arena-venv\Scripts\python.exe'
 $state = Join-Path $PSScriptRoot '.exness-arena'
 $env:PYTHONPATH = $PSScriptRoot
+$settings = Get-Content -LiteralPath (Join-Path $state 'settings.json') -Raw | ConvertFrom-Json
+$enabledBots = @($settings.enabled_bots)
 $marker = Join-Path $state 'STOP'
 if (Test-Path -LiteralPath $marker) { throw 'Trial is already paused. Restart will not override an existing pause.' }
 $records = @(Get-Content -LiteralPath (Join-Path $state 'processes.json') -Raw | ConvertFrom-Json)
@@ -12,7 +14,7 @@ foreach ($record in $records) {
     $expected = if ($record.repo -eq 'tracker') { 'exness_arena.tracker' } else { "$($record.repo)\exness_trial.py" }
     if ($procInfo.ExecutablePath -ne $python -or -not $procInfo.CommandLine.Contains($expected)) { throw "Process identity mismatch: $($record.repo)" }
 }
-foreach ($repo in @('Monn','MT5-Python-Trading')) {
+foreach ($repo in $enabledBots) {
     & $python (Join-Path $workspace "$repo\exness_trial.py") --preflight
     if ($LASTEXITCODE -ne 0) { throw "Preflight failed: $repo" }
 }
@@ -49,7 +51,7 @@ if (-not $healthy) { throw 'New tracker did not become healthy. Trial remains pa
 if ((Get-Content -LiteralPath $marker -Raw) -ne $token) { throw 'Pause marker changed; preserving the pause.' }
 Remove-Item -LiteralPath $marker
 $newRecords = @(@{repo='tracker';pid=$tracker.Id;stdout=$trackerOut;stderr=$trackerErr})
-foreach ($repo in @('Monn','MT5-Python-Trading')) {
+foreach ($repo in $enabledBots) {
     $out = Join-Path $state "$repo.$stamp.out.log"
     $err = Join-Path $state "$repo.$stamp.err.log"
     $process = Start-Process -FilePath $python -ArgumentList '-u',(Join-Path $workspace "$repo\exness_trial.py") -WorkingDirectory (Join-Path $workspace $repo) -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError $err -PassThru

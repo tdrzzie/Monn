@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .common import REGISTRY, STATE, claim_bar, health, settings
 from .universe import refresh, coverage
+from .adapters import PROFILES, prepare_profile, profile_supported, history, NoOrderGateway
 
 
 def close_owned(gateway, position):
@@ -107,23 +108,35 @@ def main(bot):
         raise SystemExit(REGISTRY[bot]["blocked"])
     if not gateway.initialize():
         raise SystemExit("Cannot initialize MT5")
-    if bot == "Monn":
+    kind = REGISTRY[bot]['runner']
+    if kind == "monn":
         from strategies.ma_cross_strategy import MACross  # noqa: F401
         cycle = monn_cycle
-    else:
+    elif kind == 'crossover':
         from mt5_trading.domain.strategies.cross_over_strategy import CrossOverStrategy  # noqa: F401
         cycle = crossover_cycle
+    elif kind in PROFILES:
+        prepare_profile(kind)
+        cycle = PROFILES[kind]
+    else:
+        raise RuntimeError('Unknown trial strategy profile: ' + str(kind))
     watchlist = refresh(gateway)
     c = settings()
     ready = 0
     for symbol in watchlist:
+        if not profile_supported(kind, symbol):
+            coverage(bot, symbol, 'unsupported_profile', 'No original Sunrise parameter profile; no substituted strategy')
+            continue
         if not gateway.symbol_select(symbol, True):
             coverage(bot, symbol, "unavailable", "Broker symbol selection failed")
             continue
-        rates = gateway.copy_rates_from_pos(symbol, gateway.TIMEFRAME_M15, 1, 300)
-        if rates is None or len(rates) < 150:
-            coverage(bot, symbol, "waiting_history", "Need at least 150 closed M15 bars")
+        rates = history(gateway, kind, symbol)
+        minimum = 550 if kind in PROFILES else 150
+        if rates is None or len(rates) < minimum:
+            coverage(bot, symbol, "waiting_history", f"Need at least {minimum} closed M15 bars")
             continue
+        if args.preflight and kind in PROFILES:
+            cycle(NoOrderGateway(gateway), symbol, rates)
         coverage(bot, symbol, "ready", "Closed M15 history available", int(rates[-1]["time"]))
         ready += 1
     if not ready:
@@ -155,12 +168,16 @@ def main(bot):
                     messages = []
                     evaluated = 0
                     for symbol in watchlist:
+                        if not profile_supported(kind, symbol):
+                            coverage(bot, symbol, 'unsupported_profile', 'No original Sunrise parameter profile; no substituted strategy')
+                            continue
                         if not gateway.symbol_select(symbol, True):
                             coverage(bot, symbol, "unavailable", "Broker symbol selection failed")
                             continue
-                        rates = gateway.copy_rates_from_pos(symbol, gateway.TIMEFRAME_M15, 1, 300)
-                        if rates is None or len(rates) < 150:
-                            coverage(bot, symbol, "waiting_history", "Need at least 150 closed M15 bars")
+                        rates = history(gateway, kind, symbol)
+                        minimum = 550 if kind in PROFILES else 150
+                        if rates is None or len(rates) < minimum:
+                            coverage(bot, symbol, "waiting_history", f"Need at least {minimum} closed M15 bars")
                             continue
                         bar = int(rates[-1]["time"])
                         if claim_bar(bot, symbol, bar):
@@ -171,7 +188,8 @@ def main(bot):
                             print(messages[-1], flush=True)
                         else:
                             coverage(bot, symbol, "monitoring", "Waiting for next closed M15 bar", bar)
-                    health(bot, "running", f"Monitoring {len(watchlist)} pairs; evaluated {evaluated} new closed M15 bars this pass")
+                    supported = sum(profile_supported(kind, s) for s in watchlist)
+                    health(bot, "running", f"Monitoring {supported}/{len(watchlist)} supported pair profiles; evaluated {evaluated} new closed M15 bars this pass")
                 except Exception:
                     failed = True
                     detail = traceback.format_exc()
