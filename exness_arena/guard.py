@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 from .common import REGISTRY, STATE, event, locked, settings
+from .identity import strategies, default_strategy, strategy_key, resolve, trial_magics
 
 
 class GuardError(RuntimeError):
@@ -22,12 +23,22 @@ class Gateway:
     The guard sizes downward only. Monetary figures are account currency (USC).
     Stop-loss risk is an estimate; gaps/slippage can exceed these limits.
     """
-    def __init__(self, native, bot, config=None):
+    def __init__(self, native, bot, config=None, strategy=None):
         if bot not in REGISTRY:
             raise GuardError("Unregistered bot")
         self.native, self.bot = native, bot
-        self.magic = REGISTRY[bot]["magic"]
+        self.strategy = strategy or default_strategy(bot)
+        if self.strategy not in strategies(bot):
+            raise GuardError('Unregistered strategy')
+        self.magic = strategies(bot)[self.strategy]['magic']
+        self.key = strategy_key(bot, self.strategy)
         self.config = config
+
+    def for_strategy(self, strategy):
+        return Gateway(self.native, self.bot, self.config, strategy=strategy)
+
+    def owns(self, position):
+        return resolve(position.magic, getattr(position, 'symbol', None)) == self.key
 
     def cfg(self):
         return self.config if self.config is not None else settings()
@@ -68,7 +79,7 @@ class Gateway:
         ps = self.native.positions_get(*args, **kwargs)
         if ps is None:
             raise GuardError("Cannot retrieve positions; refusing to assume an empty book")
-        return tuple(p for p in ps if p.magic == self.magic)
+        return tuple(p for p in ps if self.owns(p))
 
     def orders_get(self, *args, **kwargs):
         if "symbol" in kwargs:
@@ -76,13 +87,13 @@ class Gateway:
         orders = self.native.orders_get(*args, **kwargs)
         if orders is None:
             raise GuardError("Cannot retrieve orders")
-        return tuple(o for o in orders if o.magic == self.magic)
+        return tuple(o for o in orders if self.owns(o))
 
     def trial_position_symbols(self):
         ps = self.native.positions_get()
         if ps is None:
             raise GuardError("Cannot retrieve positions for watchlist reconciliation")
-        magics = {REGISTRY[b]["magic"] for b in self.cfg()["enabled_bots"]}
+        magics = trial_magics()
         return [p.symbol for p in ps if p.magic in magics]
 
     def symbol_info(self, name):
@@ -101,7 +112,7 @@ class Gateway:
         ds = self.native.history_deals_get(*args, **kwargs)
         if ds is None:
             raise GuardError("Cannot retrieve deal history")
-        return tuple(d for d in ds if d.magic == self.magic)
+        return tuple(d for d in ds if self.owns(d))
 
     def _positions(self):
         ps = self.native.positions_get()
@@ -109,7 +120,7 @@ class Gateway:
         if ps is None or orders is None:
             raise GuardError("Account state unavailable")
         # This trial never places pending orders. An unexpected trial order blocks new risk.
-        magics = {v["magic"] for v in REGISTRY.values()}
+        magics = trial_magics()
         if any(o.magic in magics for o in orders):
             raise GuardError("Unexpected pending trial order; reconcile before trading")
         return tuple(ps)
@@ -128,6 +139,11 @@ class Gateway:
             raise GuardError("Trial is halted; new entries blocked")
         if self.bot not in c["enabled_bots"]:
             raise GuardError("Bot has not passed readiness checks")
+        if self.strategy not in c.get('enabled_strategies', {}).get(self.bot, list(strategies(self.bot))):
+            raise GuardError('Strategy is not enabled')
+        allowed_symbols = strategies(self.bot)[self.strategy].get('symbols')
+        if allowed_symbols and symbol not in allowed_symbols:
+            raise GuardError('Pair is outside this strategy parameter profile')
         # A missing/stale tracker stops all new entries; exits remain available.
         row = db.execute("SELECT time FROM health WHERE bot='tracker' AND status='running'").fetchone()
         if not row or time.time() - datetime.fromisoformat(row[0]).timestamp() > 90:
@@ -139,7 +155,7 @@ class Gateway:
         deals = self.native.history_deals_get(start, datetime.now(timezone.utc))
         if deals is None:
             raise GuardError("Deal history unavailable")
-        same_direction = [p for p in ps if p.magic == self.magic and p.symbol == symbol and p.type == side]
+        same_direction = [p for p in ps if self.owns(p) and p.symbol == symbol and p.type == side]
         for p in same_direction:
             # Every existing position in this direction must be profitable individually.
             # Include swap and known opening fees, conservatively retaining all entry fees
@@ -149,17 +165,24 @@ class Gateway:
             pnl = p.profit + p.swap + entry_fees
             if not math.isfinite(pnl) or pnl <= 0:
                 raise GuardError("Same-direction additions require every existing position to be profitable after swap and opening fees")
-        owners = {d.position_id for d in deals if d.magic == self.magic}
+        owners = {d.position_id for d in deals if (resolve(d.magic, getattr(d, 'symbol', None)) or '').startswith(self.bot + '/')}
         owners.update(r[0] for r in db.execute("SELECT position_id FROM owners WHERE bot=?", (self.bot,)))
         net = sum(d.profit + d.swap + d.commission + getattr(d, "fee", 0) for d in deals if d.position_id in owners)
         if net <= -c["bot_loss_budget_usc"]:
             raise GuardError("Per-bot trial loss budget exhausted")
+        strategy_positions = {d.position_id for d in deals if self.owns(d)}
+        strategy_positions.update(r[0] for r in db.execute('SELECT position_id FROM strategy_owners WHERE bot=? AND strategy=?', (self.bot, self.strategy)))
+        strategy_net = sum(d.profit + d.swap + d.commission + getattr(d, 'fee', 0) for d in deals if d.position_id in strategy_positions)
+        strategy_limit = c.get('strategy_loss_budget_usc', c['bot_loss_budget_usc'])
+        if strategy_net <= -strategy_limit:
+            raise GuardError('Per-strategy trial loss budget exhausted')
         total = 0.0
-        magics = {REGISTRY[b]["magic"] for b in c["enabled_bots"]}
+        magics = trial_magics()
         for p in ps:
             if p.magic in magics:
                 total += self.loss(p.type, p.symbol, p.volume, p.price_open, p.sl)
-        return total, net
+        headroom = min(c['bot_loss_budget_usc'] + min(net, 0), strategy_limit + min(strategy_net, 0))
+        return total, headroom
 
     def _prepare(self, db, request):
         n, c = self.native, self.cfg()
@@ -173,10 +196,10 @@ class Gateway:
         if action not in (n.TRADE_ACTION_DEAL, n.TRADE_ACTION_SLTP):
             raise GuardError("Only market orders and protection updates are supported in this trial")
         r["magic"] = self.magic
-        r["comment"] = ("trial:" + self.bot)[:31]
+        r["comment"] = ("trial:" + self.strategy)[:31]
         if ticket:
             p = next((p for p in ps if p.ticket == ticket), None)
-            if p is None or p.magic != self.magic:
+            if p is None or not self.owns(p):
                 raise GuardError("Refusing to change another bot's or manual position")
             r["symbol"] = p.symbol
             if action == n.TRADE_ACTION_SLTP:
@@ -199,7 +222,7 @@ class Gateway:
             r["symbol"] = self.symbol(r.get("symbol", ""))
             if r.get("type") not in (n.ORDER_TYPE_BUY, n.ORDER_TYPE_SELL):
                 raise GuardError("Invalid order direction")
-            total, net = self._entry_limits(db, account, ps, r["symbol"], r["type"])
+            total, loss_headroom = self._entry_limits(db, account, ps, r["symbol"], r["type"])
             if r.get("type") not in (n.ORDER_TYPE_BUY, n.ORDER_TYPE_SELL):
                 raise GuardError("Invalid order direction")
         s = n.symbol_info(r["symbol"])
@@ -227,7 +250,7 @@ class Gateway:
             unit_loss = self.loss(r["type"], r["symbol"], 1.0, price, sl)
             if unit_loss <= 0:
                 raise GuardError("Invalid stop-loss risk")
-            budget = min(c["risk_budget_usc"], c["bot_loss_budget_usc"] + min(net, 0), c["total_risk_budget_usc"] - total)
+            budget = min(c["risk_budget_usc"], loss_headroom, c["total_risk_budget_usc"] - total)
             # Reserve 10% for normal execution drift; never round volume upward.
             requested = float(r.get("volume", 0))
             if not finite_positive(requested):
@@ -251,13 +274,13 @@ class Gateway:
                 check = self.native.order_check(r)
                 if check is None or check.retcode != 0:
                     raise GuardError("Broker preflight rejected order: " + str(getattr(check, "comment", "unavailable")))
-                event(db, self.bot, "submit", r)
+                event(db, self.bot, "submit", r, strategy=self.strategy)
                 try:
                     result = self.native.order_send(r)
                 except Exception as exc:
                     db.execute("INSERT OR REPLACE INTO flags VALUES('halt','exception during order submission; reconcile manually')")
                     raise GuardError("Unknown broker submission outcome; halted without retry") from exc
-                event(db, self.bot, "result", result._asdict() if result else {"error": self.native.last_error()})
+                event(db, self.bot, "result", result._asdict() if result else {"error": self.native.last_error()}, strategy=self.strategy)
                 if result is None:
                     db.execute("INSERT OR REPLACE INTO flags VALUES('halt','ambiguous order result; reconcile manually')")
                     raise GuardError("Ambiguous broker result; trial halted without retry")
@@ -269,14 +292,15 @@ class Gateway:
                         db.execute("INSERT OR REPLACE INTO flags VALUES('halt','post-fill positions unavailable')")
                     else:
                         for p in updated:
-                            if p.magic == self.magic:
+                            if self.owns(p):
                                 db.execute("INSERT OR IGNORE INTO owners VALUES(?,?)", (p.identifier, self.bot))
+                                db.execute('INSERT OR IGNORE INTO strategy_owners VALUES(?,?,?)', (p.identifier, self.bot, self.strategy))
                                 if not p.sl or self.loss(p.type, p.symbol, p.volume, p.price_open, p.sl) > self.cfg()["risk_budget_usc"]:
                                     db.execute("INSERT OR REPLACE INTO flags VALUES('halt','post-fill protection or risk mismatch')")
                 return result
             except GuardError as e:
                 message = str(e)
-                event(db, self.bot, "blocked", message)
+                event(db, self.bot, "blocked", message, strategy=self.strategy)
                 print(f"[{self.bot}] GUARD: {message}", flush=True)
                 return SimpleNamespace(retcode=10006, comment=message, order=0, deal=0, volume=0.0,
                                        _asdict=lambda: {"retcode": 10006, "comment": message, "order": 0, "request": SimpleNamespace(_asdict=lambda: dict(request))})

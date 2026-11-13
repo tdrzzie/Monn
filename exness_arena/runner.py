@@ -13,7 +13,8 @@ import time
 import traceback
 from pathlib import Path
 
-from .common import REGISTRY, STATE, claim_bar, health, settings
+from .common import REGISTRY, STATE, claim_strategy_bar, health, settings
+from .identity import enabled_for_symbol
 from .universe import refresh, coverage
 from .adapters import PROFILES, prepare_profile, profile_supported, history, NoOrderGateway
 
@@ -135,9 +136,10 @@ def main(bot):
         if rates is None or len(rates) < minimum:
             coverage(bot, symbol, "waiting_history", f"Need at least {minimum} closed M15 bars")
             continue
-        if args.preflight and kind in PROFILES:
-            cycle(NoOrderGateway(gateway), symbol, rates)
-        coverage(bot, symbol, "ready", "Closed M15 history available", int(rates[-1]["time"]))
+        for strategy in enabled_for_symbol(bot, symbol, c):
+            if args.preflight and kind in PROFILES:
+                cycle(NoOrderGateway(gateway.for_strategy(strategy)), symbol, rates)
+            coverage(bot, symbol, "ready", "Closed M15 history available", int(rates[-1]["time"]), strategy=strategy)
         ready += 1
     if not ready:
         raise RuntimeError("No pairs have sufficient history; no orders sent")
@@ -180,14 +182,16 @@ def main(bot):
                             coverage(bot, symbol, "waiting_history", f"Need at least {minimum} closed M15 bars")
                             continue
                         bar = int(rates[-1]["time"])
-                        if claim_bar(bot, symbol, bar):
-                            message = cycle(gateway, symbol, rates)
-                            coverage(bot, symbol, "evaluated", message, bar)
-                            evaluated += 1
-                            messages.append(symbol + ": " + message)
-                            print(messages[-1], flush=True)
-                        else:
-                            coverage(bot, symbol, "monitoring", "Waiting for next closed M15 bar", bar)
+                        for strategy in enabled_for_symbol(bot, symbol, settings()):
+                            scoped = gateway.for_strategy(strategy)
+                            if claim_strategy_bar(bot, strategy, symbol, bar):
+                                message = cycle(scoped, symbol, rates)
+                                coverage(bot, symbol, "evaluated", message, bar, strategy=strategy)
+                                evaluated += 1
+                                messages.append(symbol + " [" + strategy + "]: " + message)
+                                print(messages[-1], flush=True)
+                            else:
+                                coverage(bot, symbol, "monitoring", "Waiting for next closed M15 bar", bar, strategy=strategy)
                     supported = sum(profile_supported(kind, s) for s in watchlist)
                     health(bot, "running", f"Monitoring {supported}/{len(watchlist)} supported pair profiles; evaluated {evaluated} new closed M15 bars this pass")
                 except Exception:

@@ -37,6 +37,9 @@ def refresh(gateway):
     return current["symbols"]
 
 
-def coverage(bot, symbol, status, detail="", bar=None):
+def coverage(bot, symbol, status, detail="", bar=None, strategy=None):
+    from .identity import strategy_for_symbol
+    strategy = strategy or strategy_for_symbol(bot, symbol)
     with locked() as db:
         db.execute("INSERT OR REPLACE INTO coverage VALUES(?,?,?,?,?,?)", (bot, symbol, now(), status, str(detail), bar))
+        db.execute('INSERT OR REPLACE INTO strategy_coverage VALUES(?,?,?,?,?,?,?)', (bot, strategy, symbol, now(), status, str(detail), bar))

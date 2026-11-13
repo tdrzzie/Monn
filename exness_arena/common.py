@@ -33,6 +33,11 @@ def connect():
       CREATE TABLE IF NOT EXISTS samples(time TEXT, bot TEXT, net REAL, floating REAL, PRIMARY KEY(time,bot));
       CREATE TABLE IF NOT EXISTS flags(name TEXT PRIMARY KEY, value TEXT);
       CREATE TABLE IF NOT EXISTS coverage(bot TEXT, symbol TEXT, time TEXT, status TEXT, detail TEXT, bar INTEGER, PRIMARY KEY(bot,symbol));
+      CREATE TABLE IF NOT EXISTS strategy_owners(position_id INTEGER PRIMARY KEY, bot TEXT NOT NULL, strategy TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS strategy_events(event_id INTEGER PRIMARY KEY, bot TEXT, strategy TEXT);
+      CREATE TABLE IF NOT EXISTS strategy_samples(time TEXT, bot TEXT, strategy TEXT, net REAL, floating REAL, PRIMARY KEY(time,bot,strategy));
+      CREATE TABLE IF NOT EXISTS strategy_decisions(bot TEXT, strategy TEXT, symbol TEXT, bar INTEGER, PRIMARY KEY(bot,strategy,symbol,bar));
+      CREATE TABLE IF NOT EXISTS strategy_coverage(bot TEXT, strategy TEXT, symbol TEXT, time TEXT, status TEXT, detail TEXT, bar INTEGER, PRIMARY KEY(bot,strategy,symbol));
     """)
     return db
 
@@ -51,8 +56,10 @@ def locked():
         db.close()
 
 
-def event(db, bot, kind, detail):
-    db.execute("INSERT INTO events(time,bot,kind,detail) VALUES(?,?,?,?)", (now(), bot, kind, json.dumps(detail, default=str)))
+def event(db, bot, kind, detail, strategy=None):
+    result = db.execute("INSERT INTO events(time,bot,kind,detail) VALUES(?,?,?,?)", (now(), bot, kind, json.dumps(detail, default=str)))
+    if strategy:
+        db.execute('INSERT INTO strategy_events VALUES(?,?,?)', (result.lastrowid, bot, strategy))
 
 
 def health(bot, status, detail=""):
@@ -63,3 +70,15 @@ def health(bot, status, detail=""):
 def claim_bar(bot, symbol, bar):
     with locked() as db:
         return db.execute("INSERT OR IGNORE INTO decisions VALUES(?,?,?)", (bot, symbol, int(bar))).rowcount == 1
+
+
+def claim_strategy_bar(bot, strategy, symbol, bar):
+    from .identity import strategy_for_symbol
+    with locked() as db:
+        # The current deployed profiles already claimed these bars before migration.
+        # Only the original strategy inherits them; another strategy gets its own decision.
+        if strategy == strategy_for_symbol(bot, symbol) and db.execute(
+                'SELECT 1 FROM decisions WHERE bot=? AND symbol=? AND bar=?', (bot, symbol, int(bar))).fetchone():
+            db.execute('INSERT OR IGNORE INTO strategy_decisions VALUES(?,?,?,?)', (bot, strategy, symbol, int(bar)))
+            return False
+        return db.execute('INSERT OR IGNORE INTO strategy_decisions VALUES(?,?,?,?)', (bot, strategy, symbol, int(bar))).rowcount == 1
