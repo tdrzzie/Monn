@@ -32,17 +32,23 @@ def monn_cycle(gateway, symbol, rates):
     frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)
     frame = frame.rename(columns={"time": "Open time", "open": "Open", "high": "High", "low": "Low", "close": "Close", "tick_volume": "Volume"})
     positions = gateway.positions_get(symbol=symbol)
+    exit_requested = False
 
     class Bridge:
         fix_order = Trader.fix_order
 
         def create_trade(self, order, volume):
+            side = 0 if order.side == OrderSide.BUY else 1
+            if any(p.type != side for p in positions):
+                return  # Never add against an existing position awaiting a confirmed exit.
             result = gateway.order_send({"action": gateway.TRADE_ACTION_DEAL, "symbol": symbol,
-                "type": 0 if order.side == OrderSide.BUY else 1, "volume": volume,
+                "type": side, "volume": volume,
                 "sl": order.sl or 0, "tp": order.tp or 0})
             order["trade_id"] = getattr(result, "order", 0)
 
         def close_trade(self, order):
+            nonlocal exit_requested
+            exit_requested = True
             for p in positions:
                 if p.ticket == order["trade_id"]:
                     close_owned(gateway, p)
@@ -58,8 +64,14 @@ def monn_cycle(gateway, symbol, rates):
         order["trade_id"] = p.ticket
         order.sl, order.tp = p.sl, p.tp
         strategy.orders_opening.append(order)
-        strategy.state = IN_BUYING if p.type == 0 else IN_SELLING
-    strategy.check_signal()
+    for side in {p.type for p in positions}:
+        strategy.state = IN_BUYING if side == 0 else IN_SELLING
+        strategy.check_signal()
+    if len(positions) < 2 and not exit_requested:
+        # A fresh qualifying closed-bar signal may fill the second slot.
+        strategy.state = None
+        strategy.orders_opening = []
+        strategy.check_signal()
     return "MACross evaluated closed M15 bar; owned positions=" + str(len(positions))
 
 
@@ -87,8 +99,10 @@ def crossover_cycle(gateway, symbol, rates):
     for p in opposite:
         close_owned(gateway, p)
     # Reversal waits for the next closed bar; no close/open race or double-risk interval.
-    if positions:
-        return "Managed existing crossover position"
+    if opposite:
+        return "Managed reversal; waiting for next closed bar before re-entry"
+    if len(positions) >= 2:
+        return "Two positions already open on this pair for this bot"
     atr = float(talib.ATR(frame.high, frame.low, frame.close, timeperiod=14).iloc[-1])
     if not atr > 0:
         return "ATR unavailable"

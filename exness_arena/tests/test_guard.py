@@ -132,10 +132,10 @@ def test_cannot_widen_or_remove_protection(setup):
     assert prepare(g,{"action":6,"position":1,"sl":1.10})["tp"]==1.12
 
 
-def test_one_position_per_bot_and_account_halt(setup):
+def test_two_positions_per_pair_and_account_halt(setup):
     g,n=setup
-    n.ps=[S(magic=g.magic)]
-    with pytest.raises(GuardError,match="One-position"): prepare(g,request())
+    n.ps=[S(magic=g.magic,symbol='EURUSDc'),S(magic=g.magic,symbol='EURUSDc')]
+    with pytest.raises(GuardError,match="Two-position"): prepare(g,request())
     n.ps=[]; n.account.equity=980
     with pytest.raises(GuardError,match="drawdown"): prepare(g,request())
 
@@ -224,3 +224,34 @@ def test_actual_monn_adapter_uses_broker_state_after_restart(setup,monkeypatch):
     g.order_send=lambda r:observed.append(r) or S(order=9)
     runner.monn_cycle(g,'EURUSDc',rates)
     assert len(observed)==1 and observed[0]['type']==0 and observed[0]['sl']>0
+
+
+def test_second_slot_allowed_and_other_pairs_do_not_consume_pair_slots(setup):
+    g,n=setup
+    position=lambda symbol,magic=g.magic:S(magic=magic,symbol=symbol,type=0,volume=.01,price_open=1.1,sl=1.0995)
+    n.ps=[position('EURUSDc'),position('GBPUSDc'),position('EURUSDc',26111302)]
+    assert prepare(g,request())['volume']==.01
+
+
+def test_no_lifetime_entry_count_limit(setup):
+    g,n=setup
+    n.ds=[S(magic=g.magic,entry=0,position_id=i,profit=0,swap=0,commission=0,fee=0) for i in range(20)]
+    assert prepare(g,request())['volume']==.01
+
+
+@pytest.mark.parametrize('bot,count,expected_orders',[('Monn',1,1),('Monn',2,0),('MT5-Python-Trading',1,1),('MT5-Python-Trading',2,0)])
+def test_strategy_adapters_use_second_slot_and_stop_at_two(setup,monkeypatch,bot,count,expected_orders):
+    import numpy as np
+    from pathlib import Path
+    from exness_arena import runner
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3]/'MT5-Python-Trading'))
+    g,n=setup
+    monkeypatch.setattr(runner,'settings',lambda:{'max_volume':.01})
+    n.ps=[S(ticket=i+1,magic=g.magic,symbol='EURUSDc',type=0,volume=.01,price_open=1.095,sl=1.09,tp=1.12) for i in range(count)]
+    values=np.linspace(1.09,1.1,300)
+    rates=np.array([(i,float(v-.00001),float(v+.0001),float(v-.0001),float(v),100)
+                    for i,v in enumerate(values)],dtype=[('time','i8'),('open','f8'),('high','f8'),('low','f8'),('close','f8'),('tick_volume','i8')])
+    observed=[]
+    g.order_send=lambda r:observed.append(r) or S(order=9)
+    (runner.monn_cycle if bot=='Monn' else runner.crossover_cycle)(g,'EURUSDc',rates)
+    assert len(observed)==expected_orders

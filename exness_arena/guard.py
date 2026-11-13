@@ -122,7 +122,7 @@ class Gateway:
             raise GuardError("Broker stop-loss valuation unavailable")
         return max(0.0, -pnl)
 
-    def _entry_limits(self, db, account, ps):
+    def _entry_limits(self, db, account, ps, symbol):
         c = self.cfg()
         if (STATE / "STOP").exists() or db.execute("SELECT 1 FROM flags WHERE name='halt'").fetchone():
             raise GuardError("Trial is halted; new entries blocked")
@@ -135,8 +135,8 @@ class Gateway:
         if account.equity <= c["initial_equity_usc"] * (1 - c["account_loss_fraction"]):
             db.execute("INSERT OR REPLACE INTO flags VALUES('halt','account drawdown')")
             raise GuardError("Account-wide drawdown limit reached")
-        if any(p.magic == self.magic for p in ps):
-            raise GuardError("One-position-per-bot limit")
+        if sum(p.magic == self.magic and p.symbol == symbol for p in ps) >= 2:
+            raise GuardError("Two-position-per-pair-per-bot limit")
         start = datetime.fromtimestamp(c["start_epoch"], timezone.utc)
         deals = self.native.history_deals_get(start, datetime.now(timezone.utc))
         if deals is None:
@@ -146,8 +146,6 @@ class Gateway:
         net = sum(d.profit + d.swap + d.commission + getattr(d, "fee", 0) for d in deals if d.position_id in owners)
         if net <= -c["bot_loss_budget_usc"]:
             raise GuardError("Per-bot trial loss budget exhausted")
-        if sum(1 for d in deals if d.magic == self.magic and d.entry == 0) >= c["max_entries_per_bot"]:
-            raise GuardError("Per-bot trial entry limit reached")
         total = 0.0
         magics = {REGISTRY[b]["magic"] for b in c["enabled_bots"]}
         for p in ps:
@@ -190,8 +188,8 @@ class Gateway:
                 raise GuardError("Protection update requires an owned position")
             if not c.get("live", False):
                 raise GuardError("Live order submission is disabled")
-            total, net = self._entry_limits(db, account, ps)
             r["symbol"] = self.symbol(r.get("symbol", ""))
+            total, net = self._entry_limits(db, account, ps, r["symbol"])
             if r.get("type") not in (n.ORDER_TYPE_BUY, n.ORDER_TYPE_SELL):
                 raise GuardError("Invalid order direction")
         s = n.symbol_info(r["symbol"])
