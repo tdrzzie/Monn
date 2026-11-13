@@ -1,0 +1,19 @@
+export const REPOS={Monn:{name:'Monn',short:'M',style:'monn'},'MT5-Python-Trading':{name:'MT5 Python',short:'Py',style:'python'},tradingbot:{name:'Aurum',short:'Au',style:'aurum'},mt5_live_trading_bot:{name:'Sunrise',short:'S',style:'sunrise'},'Forex-Trading-Bot':{name:'SuperTrend',short:'ST',style:'supertrend'},'claude-trader':{name:'Claude Trader',short:'C',style:''},EA31337:{name:'EA31337',short:'EA',style:''}};
+export const repoName=repo=>REPOS[repo]?.name||repo;
+export const human=value=>String(value??'').replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase());
+export const finite=value=>typeof value==='number'&&Number.isFinite(value);
+export const sum=(rows,key)=>rows.reduce((total,row)=>total+(finite(row[key])?row[key]:0),0);
+export const signClass=value=>!finite(value)||value===0?'':value>0?'positive':'negative';
+export function money(value,unit='USC',signed=true){if(!finite(value))return '—';const v=value/(unit==='USD'?100:1);return (signed&&v>0?'+':'')+new Intl.NumberFormat('en-US',{minimumFractionDigits:unit==='USD'?4:2,maximumFractionDigits:unit==='USD'?4:2}).format(v);}
+export const number=(value,digits=0)=>finite(value)?new Intl.NumberFormat('en-US',{maximumFractionDigits:digits}).format(value):'—';
+export const percent=value=>finite(value)?(value*100).toFixed(1)+'%':'—';
+export const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function freshStatus(status={},now=Date.now()){const state=status.status||'unknown';if(state==='running'&&(!status.time||now-Date.parse(status.time)>90000))return 'stale';return state;}
+export function matches(row,scope={}){const repo=row.repo??row.bot;if(scope.repo&&repo!==scope.repo)return false;if(scope.strategy&&row.strategy!==scope.strategy)return false;const q=(scope.q||'').trim().toLowerCase();return !q||[repo,repoName(repo),row.strategy,row.symbol,row.ticket,row.position_id,row.status?.status,row.status,row.detail,row.version_id,row.variant,row.direction].some(v=>String(typeof v==='object'?JSON.stringify(v):v??'').toLowerCase().includes(q));}
+export function totals(rows){return {net:sum(rows,'total_net_usc'),booked:sum(rows,'booked_net_usc'),floating:sum(rows,'floating_usc'),closed:sum(rows,'closed_positions'),open:sum(rows,'open_positions')};}
+export function sorted(rows,key,direction='desc'){return [...rows].sort((a,b)=>{let x=a[key],y=b[key];if(x==null)return y==null?0:1;if(y==null)return -1;const c=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y));return direction==='asc'?c:-c;});}
+export function pageOf(rows,page=1,size=12){const pages=Math.max(1,Math.ceil(rows.length/size));page=Math.min(pages,Math.max(1,page));return {rows:rows.slice((page-1)*size,page*size),page,pages,total:rows.length,start:rows.length?(page-1)*size+1:0,end:Math.min(page*size,rows.length)};}
+export function exposure(positions){const map=new Map();for(const p of positions){const r=map.get(p.symbol)||{symbol:p.symbol,buy:0,sell:0,total:0};r[p.direction==='buy'?'buy':'sell']++;r.total++;map.set(p.symbol,r);}return [...map.values()].sort((a,b)=>b.total-a.total||a.symbol.localeCompare(b.symbol));}
+export function groupEvents(events){const groups=new Map();for(const e of events){const key=JSON.stringify([e.repo,e.strategy,e.kind,e.detail]);const row=groups.get(key);if(row)row.count++;else groups.set(key,{...e,count:1});}return [...groups.values()];}
+export function csv(rows){if(!rows.length)return '';const fields=Object.keys(rows[0]);const value=v=>{let s=v==null?'':typeof v==='object'?JSON.stringify(v):String(v);if(/^[=+@\-]/.test(s)&&typeof v!=='number')s="'"+s;return '"'+s.replaceAll('"','""')+'"';};return '\uFEFF'+[fields.map(value).join(','),...rows.map(row=>fields.map(f=>value(row[f])).join(','))].join('\r\n');}
+export function cohortKey(row){return [row.bot??row.repo,row.strategy,row.version_id,row.mode,row.variant].join('|');}

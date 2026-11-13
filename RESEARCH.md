@@ -48,7 +48,7 @@ Research failures are reported separately. They never retry a real submission or
 
 ## Inspect and export
 
-The existing dashboard at `http://127.0.0.1:8765` has a paper-only research table grouped by repository, strategy, version, observation mode, variant and open/closed state. `http://127.0.0.1:8765/api/research` exposes the summary and limitations separately from live results.
+The Arena dashboard at `http://127.0.0.1:8765/#research` has a dedicated paper-only research view grouped by repository, strategy, version, observation mode, variant and open/closed state, with filtering, sorting, pagination and local CSV export. See `Monn/DASHBOARD.md` for all views and value definitions. `http://127.0.0.1:8765/api/research` exposes the summary and limitations separately from live results.
 
 From the workspace parent in PowerShell:
 

@@ -5,6 +5,7 @@ import csv
 import json
 import threading
 import time
+from urllib.parse import urlsplit, parse_qs
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -70,6 +71,9 @@ def collect():
     ps = native.positions_get()
     if ds is None or ps is None:
         raise RuntimeError("Native MT5 history/positions unavailable")
+    account = native.account_info()
+    if account is None:
+        raise RuntimeError("Account information unavailable")
     timestamp = now()
     with locked() as db:
         owners = dict(db.execute("SELECT position_id,bot FROM owners"))
@@ -106,7 +110,7 @@ def collect():
                 spec = strategy_specs[key]
                 position_rows.append({'repo': spec['repo'], 'strategy': spec['strategy'], 'position_id': p.identifier,
                     'ticket': p.ticket, 'magic': p.magic, 'symbol': p.symbol, 'direction': 'buy' if p.type == 0 else 'sell',
-                    'volume': p.volume, 'stop_loss': p.sl, 'take_profit': p.tp, 'profit_usc': p.profit, 'swap_usc': p.swap})
+                    'volume': p.volume, 'stop_loss': p.sl, 'take_profit': p.tp, 'profit_usc': p.profit, 'swap_usc': p.swap, 'entry_price': p.price_open, 'current_price': p.price_current, 'opened_utc': datetime.fromtimestamp(p.time, timezone.utc).isoformat()})
         for pid, bot in owners.items():
             db.execute("INSERT OR IGNORE INTO owners VALUES(?,?)", (pid, bot))
         for d in ds:
@@ -130,6 +134,12 @@ def collect():
         if row['repo'] in cfg['enabled_bots'] and row['strategy'] not in cfg.get('enabled_strategies', {}).get(row['repo'], [s['strategy'] for s in strategy_specs.values() if s['repo'] == row['repo']]):
             row['status'] = {'status': 'disabled', 'detail': 'Strategy is registered but not enabled'}
     data = {"updated_utc": timestamp, "currency": "USC", "rows": rows,
+            "enabled_repos": cfg['enabled_bots'], "enabled_strategies": cfg.get('enabled_strategies', {}),
+            "account": {"balance_usc": account.balance, "equity_usc": account.equity,
+                        "free_margin_usc": account.margin_free, "margin_usc": account.margin,
+                        "initial_equity_usc": cfg['initial_equity_usc'],
+                        "drawdown_threshold_usc": cfg['initial_equity_usc']*(1-cfg['account_loss_fraction']),
+                        "equity_decline_fraction": max(0,1-account.equity/cfg['initial_equity_usc'])},
             "halt": halt[0] if halt else None, "events": events, "unallocated_fees_usc": unallocated,
             "watchlist": cfg["symbols"], "coverage": coverage,
             "strategies": strategy_rows, "positions": position_rows, "strategy_coverage": strategy_coverage,
@@ -167,46 +177,48 @@ def collect():
     return data
 
 
-HTML = """<!doctype html><meta charset=utf-8><title>Exness cent bot trial</title>
-<style>body{font:15px system-ui;background:#10151d;color:#e3eaf4;padding:32px}h1{font-size:25px}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:12px;border-bottom:1px solid #344052}.muted{color:#9eb0c8}pre{white-space:pre-wrap}a{color:#85c4ff}</style>
-<h1>Exness cent bot trial</h1><p id=info></p><p class=muted>USC = US cents Â· 100 USC = $1 Â· Each ready bot has the same risk cap. Pending bots are excluded from the comparison.</p>
-<p id=risklimits></p>
-<h2>Paper-only research</h2><p id=researchinfo>Loading research observations...</p><p class=muted>Shadow results are hypothetical, independent per-signal experiments. Gross figures include spread, exclude commissions, swap and extra slippage, and do not represent a live portfolio. Live loss gates remain unchanged.</p>
-<table><thead><tr><th>Repo / strategy</th><th>Version</th><th>Mode</th><th>Exit variant</th><th>State</th><th>Paper trades</th><th>Gross USC</th><th>Mean R</th></tr></thead><tbody id=shadowrows></tbody></table>
-<table><thead><tr><th>Repository</th><th>Status</th><th>Magic</th><th>Closed / open</th><th>Closed net USC</th><th>Floating USC</th><th>Total USD</th><th>Win rate</th><th>Sampled DD USC</th></tr></thead><tbody id=rows></tbody></table>
-<h2>Strategy results</h2><p class=muted>Ownership and profitable additions are isolated by strategy. Shared account risk and existing repo loss backstops remain in force.</p>
-<table><thead><tr><th>Repository</th><th>Strategy</th><th>Status</th><th>Magic</th><th>Closed / open</th><th>Closed net USC</th><th>Floating USC</th><th>Total USD</th><th>Sampled DD USC</th></tr></thead><tbody id=strategyrows></tbody></table>
-<h2>Open positions by strategy</h2><table><thead><tr><th>Repository</th><th>Strategy</th><th>Ticket</th><th>Pair</th><th>Direction</th><th>Volume</th><th>SL</th><th>TP</th><th>Floating USC</th></tr></thead><tbody id=positionrows></tbody></table>
-<p class=muted>Net includes commission, fees and swap. API costs are separate. A profitable short trial does not establish a lasting edge. Limits cannot guarantee maximum losses through gaps.</p>
-<h2>Pair monitoring</h2><p id=universe></p><pre id=coverage></pre>
-<h2>Latest execution events</h2><pre id=events></pre><script>
-async function refresh(){try{const d=await(await fetch('/api/results')).json();document.querySelector('#info').textContent=d.updated_utc+(d.halt?' Â· HALTED: '+d.halt:'');const b=document.querySelector('#rows');b.replaceChildren();for(const r of d.rows){const tr=document.createElement('tr');for(const v of [r.repo,r.status.status,r.magic,r.closed_positions+' / '+r.open_positions,r.closed_net_usc.toFixed(3),r.floating_usc.toFixed(3),r.total_net_usd.toFixed(4),r.win_rate===null?'â€”':(100*r.win_rate).toFixed(1)+'%',r.sampled_drawdown_usc.toFixed(3)]){const td=document.createElement('td');td.textContent=v;tr.append(td)}tr.title=r.status.detail||'';b.append(tr)}document.querySelector('#events').textContent=d.events.map(e=>e.time+' '+e.repo+(e.strategy?'/'+e.strategy:'')+' '+e.kind+' '+JSON.stringify(e.detail)).join('\\n')}catch(e){document.querySelector('#info').textContent='Tracker unavailable: '+e}}refresh();setInterval(refresh,10000)
-async function pairCoverage(){try{const d=await(await fetch('/api/results')).json();document.querySelector('#universe').textContent=(d.watchlist||[]).length+' pairs Â· M15 Â· broker inventory refreshed every minute';document.querySelector('#coverage').textContent=(d.strategy_coverage||d.coverage||[]).map(x=>x.repo+' / '+(x.strategy||'legacy')+' | '+x.symbol+' | '+x.status+' | '+x.detail).join('\\n')}catch(e){document.querySelector('#universe').textContent='Pair status unavailable'}}pairCoverage();setInterval(pairCoverage,10000)
-function fillTable(id,rows){const b=document.getElementById(id);b.replaceChildren();for(const values of rows){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td)}b.append(tr)}}
-async function strategies(){try{const d=await(await fetch('/api/results')).json();fillTable('strategyrows',(d.strategies||[]).map(r=>[r.repo,r.strategy,r.status.status,r.magic,r.closed_positions+' / '+r.open_positions,r.closed_net_usc.toFixed(3),r.floating_usc.toFixed(3),r.total_net_usd.toFixed(4),r.sampled_drawdown_usc.toFixed(3)]));fillTable('positionrows',(d.positions||[]).map(p=>[p.repo,p.strategy,p.ticket,p.symbol,p.direction,p.volume,p.stop_loss,p.take_profit,(p.profit_usc+p.swap_usc).toFixed(3)]))}catch(e){document.querySelector('#info').textContent='Strategy data unavailable: '+e}}strategies();setInterval(strategies,10000)
-async function limits(){try{const d=await(await fetch('/api/results')).json();const r=d.risk_limits;if(r)document.querySelector('#risklimits').textContent='Per-position risk: '+r.per_position_usc+' USC | Combined open-risk cap: '+(r.combined_open_risk_cap_usc===null?'disabled':r.combined_open_risk_cap_usc+' USC')+' | Strategy loss limit: '+r.strategy_loss_usc+' USC | Repo loss limit: '+r.repo_loss_usc+' USC | Account drawdown halt: '+(r.account_drawdown_fraction*100)+'%'}catch(e){}}limits();setInterval(limits,10000)
-async function research(){try{const d=await(await fetch('/api/research')).json();if(!d.counts)return;document.querySelector('#researchinfo').textContent=d.counts.research_decisions+' recorded decisions | '+d.counts.versions+' versions | '+d.counts.live_path+' live path samples | '+d.incomplete_decisions+' incomplete decisions | '+d.observations.length+' recent research observations';fillTable('shadowrows',(d.shadows||[]).map(r=>[r.bot+' / '+r.strategy,r.version_id.slice(0,10),r.mode,r.variant,r.status,r.count,r.gross_usc===null?'':r.gross_usc.toFixed(3),r.mean_r===null?'':r.mean_r.toFixed(3)]))}catch(e){document.querySelector('#researchinfo').textContent='Research status unavailable: '+e}}research();setInterval(research,10000)
-</script>"""
+DASHBOARD = PACKAGE / 'dashboard'
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/api/results":
-            payload = (STATE / "results.json").read_bytes()
-            content_type = "application/json"
-        elif self.path == '/api/research':
-            target = STATE / 'research-summary.json'
-            payload = target.read_bytes() if target.exists() else b'{"status":"initializing","paper_only":true}'
-            content_type = 'application/json'
-        elif self.path == "/":
-            payload = HTML.encode()
-            content_type = "text/html; charset=utf-8"
-        else:
-            self.send_error(404)
-            return
+        route = urlsplit(self.path)
+        path = route.path
+        content_type = 'application/json; charset=utf-8'
+        try:
+            if path == '/api/results':
+                payload = (STATE / 'results.json').read_bytes()
+            elif path == '/api/research':
+                target = STATE / 'research-summary.json'
+                payload = target.read_bytes() if target.exists() else b'{"status":"initializing","paper_only":true}'
+            elif path == '/api/history':
+                from .dashboard_api import history
+                q = parse_qs(route.query)
+                payload = json.dumps(history(q.get('repo',[''])[0], q.get('strategy',[''])[0], q.get('range',['all'])[0])).encode()
+            elif path == '/api/trades':
+                from .dashboard_api import closed_trades
+                payload = json.dumps(closed_trades()).encode()
+            elif path == '/api/protection':
+                payload = (PACKAGE / 'protection.json').read_bytes()
+            else:
+                assets = {'/': ('index.html','text/html; charset=utf-8'),
+                          '/dashboard.css': ('dashboard.css','text/css; charset=utf-8'),
+                          '/dashboard.js': ('dashboard.js','text/javascript; charset=utf-8'),
+                          '/dashboard-core.mjs': ('dashboard-core.mjs','text/javascript; charset=utf-8')}
+                if path not in assets:
+                    self.send_error(404); return
+                filename, content_type = assets[path]
+                payload = (DASHBOARD / filename).read_bytes()
+        except ValueError as exc:
+            self.send_error(400,str(exc)); return
+        except Exception:
+            self.send_error(503,'Dashboard data temporarily unavailable'); return
         self.send_response(200)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Cache-Control", "no-store")
+        self.send_header('Content-Type', content_type)
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+        self.send_header('Content-Length',str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
 
