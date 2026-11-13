@@ -5,6 +5,7 @@ import time
 from .common import settings, locked, event
 import MetaTrader5 as native
 from .common import STATE, REGISTRY, health
+from .volume import INDEX_SYMBOLS, entry_volume_cap
 
 
 def configure():
@@ -62,9 +63,40 @@ def remove_combined_cap():
     print('Combined open-risk cap disabled. Every other setting, loss counter and position record is unchanged.')
 
 
+def enable_index_minimum_lots():
+    if not (STATE / 'STOP').exists():
+        raise SystemExit('Pause and verify runners have exited before changing index lot caps')
+    from .guard import Gateway, finite_positive
+    cfg = settings()
+    gateway = Gateway(native, 'Monn', cfg)
+    if not gateway.initialize():
+        raise SystemExit('Cannot validate the pinned MT5 account')
+    try:
+        caps = {}
+        for symbol in INDEX_SYMBOLS:
+            spec = native.symbol_info(symbol)
+            if spec is None or spec.trade_mode != native.SYMBOL_TRADE_MODE_FULL or not finite_positive(spec.volume_min):
+                raise SystemExit('Missing or non-tradable index specification: ' + symbol)
+            caps[symbol] = spec.volume_min
+        with locked() as db:
+            before = settings()
+            updated = dict(before, max_volume_by_symbol=caps)
+            for symbol in INDEX_SYMBOLS:
+                entry_volume_cap(symbol, updated)
+            path = STATE / 'settings.json'
+            (STATE / ('settings.before-index-minimum-lots-' + str(time.time_ns()) + '.json')).write_text(json.dumps(before, indent=2), encoding='utf-8')
+            temp = path.with_suffix('.next.json')
+            temp.write_text(json.dumps(updated, indent=2), encoding='utf-8')
+            temp.replace(path)
+            event(db, 'control', 'index_minimum_lot_caps', {'max_volume_by_symbol': caps, 'other_settings_unchanged': True})
+        print('Index caps set to broker minimums: ' + json.dumps(caps) + '; all monetary limits unchanged.')
+    finally:
+        native.shutdown()
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["configure", "pause", "status", "remove-combined-cap"])
+    parser.add_argument("action", choices=["configure", "pause", "status", "remove-combined-cap", "enable-index-minimum-lots"])
     args = parser.parse_args()
     if args.action == "configure":
         configure()
@@ -73,6 +105,8 @@ def main():
         print("Entries paused and strategy runners will exit; server-side position stops remain active. Tracker stays running.")
     elif args.action == 'remove-combined-cap':
         remove_combined_cap()
+    elif args.action == 'enable-index-minimum-lots':
+        enable_index_minimum_lots()
     else:
         result = STATE / "results.json"
         print(result.read_text() if result.exists() else "Tracker has not produced a snapshot")

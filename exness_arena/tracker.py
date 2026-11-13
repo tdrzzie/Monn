@@ -134,7 +134,7 @@ def collect():
             "watchlist": cfg["symbols"], "coverage": coverage,
             "strategies": strategy_rows, "positions": position_rows, "strategy_coverage": strategy_coverage,
             "compatibility": json.loads((PACKAGE / 'compatibility.json').read_text()) if (PACKAGE / 'compatibility.json').exists() else {},
-            "risk_limits": {"per_position_usc": cfg['risk_budget_usc'], "combined_open_risk_cap_usc": cfg.get('total_risk_budget_usc'),
+            "risk_limits": {"default_max_volume": cfg["max_volume"], "max_volume_by_symbol": cfg.get("max_volume_by_symbol", {}), "per_position_usc": cfg['risk_budget_usc'], "combined_open_risk_cap_usc": cfg.get('total_risk_budget_usc'),
                             "strategy_loss_usc": cfg.get('strategy_loss_budget_usc', cfg['bot_loss_budget_usc']),
                             "repo_loss_usc": cfg['bot_loss_budget_usc'], "account_drawdown_fraction": cfg['account_loss_fraction']},
             "position_policy": {"mode": "hedge_with_profitable_additions", "max_positions_per_pair_per_bot": None,

@@ -13,6 +13,7 @@ import time
 import traceback
 from pathlib import Path
 
+from .volume import entry_volume_cap
 from .common import REGISTRY, STATE, claim_strategy_bar, health, settings, strategy_halt, strategy_halt_reason
 from .identity import enabled_for_symbol, strategies
 from .universe import refresh, coverage
@@ -51,7 +52,7 @@ def monn_cycle(gateway, symbol, rates):
                     close_owned(gateway, p)
 
     strategy = MACross("ma_cross", {"fast_ma": 10, "slow_ma": 20, "type": "SMA", "sl_fix_mode": "ADJ_SL"}, {"tf": "15m"})
-    strategy.set_volume(settings()["max_volume"])
+    strategy.set_volume(entry_volume_cap(symbol, settings()))
     strategy.set_max_sl_pct(0.25)
     strategy.attach({"15m": frame})
     strategy.attach_trader(Bridge())
@@ -92,7 +93,7 @@ def crossover_cycle(gateway, symbol, rates):
     sl = entry - distance if side == 0 else entry + distance
     tp = entry + 2 * distance if side == 0 else entry - 2 * distance
     gateway.order_send({"action": gateway.TRADE_ACTION_DEAL, "symbol": symbol, "type": side,
-        "volume": settings()["max_volume"], "sl": sl, "tp": round(tp, gateway.symbol_info(symbol).digits)})
+        "volume": entry_volume_cap(symbol, settings()), "sl": sl, "tp": round(tp, gateway.symbol_info(symbol).digits)})
     return f"Crossover {signal.value}; mandatory 2 ATR stop and 2R target"
 
 

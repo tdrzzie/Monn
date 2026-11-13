@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 import talib
 
+from .volume import entry_volume_cap
 from .common import STATE, settings, locked
 
 WORKSPACE = Path(__file__).resolve().parents[2]
@@ -42,7 +43,7 @@ def submit(gateway, symbol, side, sl, tp):
         return 'No valid protective price levels'
     info = gateway.symbol_info(symbol)
     result = gateway.order_send({'action': gateway.TRADE_ACTION_DEAL, 'symbol': symbol, 'type': side,
-        'volume': settings()['max_volume'], 'sl': float(sl), 'tp': round(float(tp), info.digits)})
+        'volume': entry_volume_cap(symbol, settings()), 'sl': float(sl), 'tp': round(float(tp), info.digits)})
     return f"{'buy' if side == 0 else 'sell'} signal; execution retcode={getattr(result, 'retcode', None)}: {getattr(result, 'comment', '')}"
 
 

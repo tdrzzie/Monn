@@ -1,4 +1,4 @@
-param([switch]$RemoveCombinedOpenRiskCap)
+param([switch]$RemoveCombinedOpenRiskCap, [switch]$EnableIndexMinimumLots)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $workspace '.arena-venv\Scripts\python.exe'
@@ -24,6 +24,10 @@ do {
     Start-Sleep -Milliseconds 500
 } while ((Get-Date) -lt $deadline)
 if ($stillRunning.Count) { throw 'Runners have not exited cleanly. Trial remains paused.' }
+if ($EnableIndexMinimumLots) {
+    & $python -m exness_arena.control enable-index-minimum-lots
+    if ($LASTEXITCODE -ne 0) { throw 'Index lot update failed. Trial remains paused.' }
+}
 # Old workers must exit before new discovery code updates the shared watchlist.
 # Otherwise an old inventory refresh can overwrite the expanded universe mid-preflight.
 foreach ($repo in $enabledBots) {

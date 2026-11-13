@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from .common import REGISTRY, STATE, event, locked, settings
 from .identity import strategies, default_strategy, strategy_key, resolve, trial_magics
+from .volume import entry_volume_cap
 
 
 class GuardError(RuntimeError):
@@ -264,7 +265,11 @@ class Gateway:
             requested = float(r.get("volume", 0))
             if not finite_positive(requested):
                 raise GuardError("Invalid requested volume")
-            volume = min(requested, s.volume_max, c["max_volume"], budget * 0.9 / unit_loss)
+            try:
+                volume_cap = entry_volume_cap(r['symbol'], c)
+            except ValueError as exc:
+                raise GuardError(str(exc)) from exc
+            volume = min(requested, s.volume_max, volume_cap, budget * 0.9 / unit_loss)
             volume = round(math.floor(volume / s.volume_step + 1e-9) * s.volume_step, 8)
             if volume < s.volume_min - 1e-9:
                 raise GuardError("Minimum broker volume exceeds the small risk budget; skipping")

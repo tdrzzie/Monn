@@ -50,7 +50,7 @@ Sunrise retains its eight original pair-specific classes/configurations and repl
 
 Unexpected live strategy evaluation errors quarantine that strategy persistently, leave protective stops intact, and allow sibling strategies to continue. A quarantined strategy cannot submit new entries until reviewed; there is no automatic error-halt reset.
 
-Read-only `exness_trial.py --audit-all` evaluates registered strategies without enabling them or sending orders. The expanded 35-instrument universe passes 280 Monn, 140 MT5-Python-Trading, 316 Aurum and 35 SuperTrend strategy/instrument checks; Sunrise retains eight original profile checks. No orders are sent by these audits. The five approved CFDs are UKOILc, USOILc, USTECc, US30c and US500c. Gold-only managed_gold and pair-specific Sunrise profiles are not expanded. All three indices currently exceed the unchanged 0.01 order-volume cap and are scan-only until broker minimum volume fits; oil minimum volume is 0.01. Ordinary stop-risk and execution checks remain mandatory.
+Read-only `exness_trial.py --audit-all` evaluates registered strategies without enabling them or sending orders. The expanded 35-instrument universe passes 280 Monn, 140 MT5-Python-Trading, 316 Aurum and 35 SuperTrend strategy/instrument checks; Sunrise retains eight original profile checks. No orders are sent by these audits. The five approved CFDs are UKOILc, USOILc, USTECc, US30c and US500c. Gold-only managed_gold and pair-specific Sunrise profiles are not expanded. Index lot ceilings now match the broker minimums: USTECc 0.05, US30c 0.05 and US500c 0.14. Other instruments, including oil, retain a 0.01 lot ceiling. Index orders still require broker-valued stop risk within the 3.50 USC ceiling and its existing execution reserve; signals that cannot fit are skipped. Ordinary stop-risk and execution checks remain mandatory.
 
 ## Strategies not enabled
 
@@ -72,7 +72,8 @@ These rules apply to all five repositories. Numeric values and enabled profiles 
 |---|---|
 | Per-position stop-risk ceiling | 3.50 USC for every strategy |
 | Combined open-risk cap | Disabled (`total_risk_budget_usc: null`); no combined open-risk cap |
-| Maximum order volume | 0.01 cent lots; broker minimum/step still apply |
+| Default maximum order volume | 0.01 cent lots; unchanged for forex, metals, crypto and oil |
+| Index-specific lot ceilings | US30c: 0.05, US500c: 0.14, USTECc: 0.05 cent lots; broker minimum/step still apply |
 | Strategy loss budget | 5.2444 USC |
 | Repository loss backstop | 5.2444 USC shared by that repo's strategies |
 | Account drawdown entry halt | 1% equity decline from the preserved trial baseline |

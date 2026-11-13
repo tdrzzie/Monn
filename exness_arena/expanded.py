@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import talib
 
+from .volume import entry_volume_cap
 from .common import REGISTRY, settings
 from .adapters import submit, WORKSPACE
 
@@ -49,7 +50,7 @@ def monn_library_cycle(gateway, symbol, rates):
                 results.append('Signal without server-side stop skipped')
                 return
             request = {'action': gateway.TRADE_ACTION_DEAL, 'symbol': symbol, 'type': side,
-                'volume': settings()['max_volume'], 'sl': float(order.sl)}
+                'volume': entry_volume_cap(symbol, settings()), 'sl': float(order.sl)}
             if order.tp:
                 request['tp'] = float(order.tp)
             result = gateway.order_send(request)
@@ -62,7 +63,7 @@ def monn_library_cycle(gateway, symbol, rates):
     rule = load_strategy(definition)
     if not rule.is_params_valid():
         raise RuntimeError('Original strategy parameters failed validation')
-    rule.set_volume(settings()['max_volume'])
+    rule.set_volume(entry_volume_cap(symbol, settings()))
     rule.set_max_sl_pct(definition.get('max_sl_pct'))
     frames = {'15m': seed}
     rule.attach(frames)
