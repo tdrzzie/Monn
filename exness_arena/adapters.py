@@ -39,11 +39,12 @@ def source_module(name, path):
 
 
 def submit(gateway, symbol, side, sl, tp):
-    if not all(math.isfinite(float(v)) and float(v) > 0 for v in (sl, tp)):
+    # An original strategy may intentionally have no fixed TP. A valid SL is mandatory.
+    if not math.isfinite(float(sl)) or float(sl) <= 0 or (tp is not None and (not math.isfinite(float(tp)) or float(tp) <= 0)):
         return 'No valid protective price levels'
     info = gateway.symbol_info(symbol)
     result = gateway.order_send({'action': gateway.TRADE_ACTION_DEAL, 'symbol': symbol, 'type': side,
-        'volume': entry_volume_cap(symbol, settings()), 'sl': float(sl), 'tp': round(float(tp), info.digits)})
+        'volume': entry_volume_cap(symbol, settings()), 'sl': float(sl), 'tp': round(float(tp), info.digits) if tp is not None else 0.0})
     return f"{'buy' if side == 0 else 'sell'} signal; execution retcode={getattr(result, 'retcode', None)}: {getattr(result, 'comment', '')}"
 
 
@@ -121,6 +122,20 @@ def aurum_cycle(gateway, symbol, rates):
     forecast = float(artifact.strategies[rule_name].generate(md).iloc[-1])
     if not math.isfinite(forecast) or abs(forecast) < 0.25:
         return f'Aurum {rule_name} forecast {forecast:.4f}: below 0.25 trial entry threshold'
+    if rule_name == 'donchian':
+        rule = artifact.strategies[rule_name]
+        # Read the native state machine's ORIGINAL entry stop, not a newly anchored
+        # ATR distance on each subsequent bar/addition. Aurum uses mid prices.
+        native_stop = float(rule.stop_levels(md.bars)[-1])
+        if not math.isfinite(native_stop) or native_stop <= 0:
+            return 'Original Donchian stop unavailable; signal skipped without fallback'
+        side = 0 if forecast > 0 else 1
+        tick = gateway.symbol_info_tick(symbol)
+        half = (tick.ask - tick.bid) / 2
+        sl = native_stop - half if side == 0 else native_stop + half
+        # Donchian has no original fixed TP. Its close-based channel/forecast exits
+        # do not replace the unchanged shared-account hedge/position policy.
+        return 'Aurum Donchian original entry stop; no fixed TP; ' + submit(gateway, symbol, side, sl, None)
     frame = pd.DataFrame(rates)
     atr = float(talib.ATR(frame.high, frame.low, frame.close, timeperiod=14).iloc[-1])
     if not math.isfinite(atr) or atr <= 0:

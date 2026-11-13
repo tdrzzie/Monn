@@ -18,6 +18,8 @@ def policy(c):
     cap = c['total_risk_budget_usc']
     combined = 'Disabled (`total_risk_budget_usc: null`); no combined open-risk cap' if cap is None else f'{cap:g} USC'
     overrides = ', '.join(f'{symbol}: {cap:g}' for symbol, cap in sorted(c.get('max_volume_by_symbol', {}).items())) or 'None'
+    protection = json.loads((ROOT / 'exness_arena/protection.json').read_text(encoding='utf-8'))
+    protection_rows = '\n'.join(f"| {name} | {spec['mode']} | {spec['rules']} |" for name, spec in protection.items())
     return f"""## Current shared trading rules
 
 These rules apply to all five repositories. Numeric values and enabled profiles are rendered from the local live settings; execution semantics are maintained alongside `Monn/exness_arena/guard.py`. USC means US cents (100 USC = USD 1).
@@ -44,6 +46,14 @@ Strategy/repo loss checks use booked deal P&L including swap, commissions and fe
 Every position requires a broker-valued server-side stop. Stop removal/widening, pending entries, upward lot rounding, account switching and changes to sibling-strategy/manual positions are prohibited. Existing manual positions remain outside bot results. All registered trial positions retain ownership and stop validation, including positions from subsequently disabled strategies.
 
 Missing account/history state, unavailable stop valuation, stale quotes, a missing/stale tracker heartbeat (90 seconds), unexpected trial pending orders and ambiguous submissions block new risk. Strategy evaluation failures quarantine only that strategy. Halts, quarantines, loss history and equity baselines never reset automatically on restart or a rule change.
+
+### Stop-loss and take-profit policy
+
+Original protection is used where the source strategy supplies executable price rules. Strategies without standalone price protection retain the explicit existing safety fallback; they are not described as having unique native SL/TP. A missing or invalid supported native stop skips the signal. All levels remain subject to the same broker validation and 3.50 USC risk ceiling; stops are never changed just to force a trade to fit.
+
+| Strategy group | Protection mode for new entries | Source rules and limitations |
+|---|---|---|
+{protection_rows}
 
 Every strategy has a stable identity and magic in `Monn/exness_arena/registry.json`. The shared journal attributes deals and positions by original opening ownership and stable position ID, including partial closes and manual exits. Results remain separate by repository and strategy. The tracker exports `results.csv`, `strategies.csv` and `positions.csv` under the local `Monn/.exness-arena/` directory.
 """
