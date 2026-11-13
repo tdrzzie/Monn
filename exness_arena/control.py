@@ -2,6 +2,7 @@
 import argparse
 import json
 import time
+from .common import settings, locked, event
 import MetaTrader5 as native
 from .common import STATE, REGISTRY, health
 
@@ -30,7 +31,7 @@ def configure():
             "symbols": ["EURUSDc", "XAUUSDc"],
             "symbol_map": {"EURUSD": "EURUSDc", "XAUUSD": "XAUUSDc", "XAUUSDm": "XAUUSDc"},
             "enabled_bots": ["Monn", "MT5-Python-Trading"], "risk_budget_usc": risk,
-            "bot_loss_budget_usc": risk * 5, "total_risk_budget_usc": risk * 2,
+            "bot_loss_budget_usc": risk * 5, "total_risk_budget_usc": None,
             "account_loss_fraction": 0.01, "position_policy": "hedge_with_profitable_additions",
             "max_volume": 0.1, "max_quote_age_seconds": 30,
             "excluded_existing_positions": [p.identifier for p in ps]}
@@ -42,15 +43,36 @@ def configure():
         native.shutdown()
 
 
+def remove_combined_cap():
+    if not (STATE / 'STOP').exists():
+        raise SystemExit('Pause and verify the strategy runners have exited before changing the cap policy')
+    with locked() as db:
+        cfg = settings()
+        before = dict(cfg)
+        cfg['total_risk_budget_usc'] = None
+        assert {k: v for k, v in cfg.items() if k != 'total_risk_budget_usc'} == {k: v for k, v in before.items() if k != 'total_risk_budget_usc'}
+        path = STATE / 'settings.json'
+        backup = STATE / ('settings.before-removing-combined-cap-' + str(time.time_ns()) + '.json')
+        backup.write_text(json.dumps(before, indent=2), encoding='utf-8')
+        temp = path.with_suffix('.next.json')
+        temp.write_text(json.dumps(cfg, indent=2), encoding='utf-8')
+        temp.replace(path)
+        event(db, 'control', 'remove_combined_open_risk_cap', {'previous_cap_usc': before.get('total_risk_budget_usc'),
+            'combined_cap_usc': None, 'all_other_settings_unchanged': True})
+    print('Combined open-risk cap disabled. Every other setting, loss counter and position record is unchanged.')
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["configure", "pause", "status"])
+    parser.add_argument("action", choices=["configure", "pause", "status", "remove-combined-cap"])
     args = parser.parse_args()
     if args.action == "configure":
         configure()
     elif args.action == "pause":
         (STATE / "STOP").touch()
         print("Entries paused and strategy runners will exit; server-side position stops remain active. Tracker stays running.")
+    elif args.action == 'remove-combined-cap':
+        remove_combined_cap()
     else:
         result = STATE / "results.json"
         print(result.read_text() if result.exists() else "Tracker has not produced a snapshot")

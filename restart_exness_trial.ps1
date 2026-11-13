@@ -1,3 +1,4 @@
+param([switch]$RemoveCombinedOpenRiskCap)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $workspace '.arena-venv\Scripts\python.exe'
@@ -27,6 +28,10 @@ do {
     Start-Sleep -Milliseconds 500
 } while ((Get-Date) -lt $deadline)
 if ($stillRunning.Count) { throw 'Runners have not exited cleanly. Trial remains paused.' }
+if ($RemoveCombinedOpenRiskCap) {
+    & $python -m exness_arena.control remove-combined-cap
+    if ($LASTEXITCODE -ne 0) { throw 'Combined-cap update failed. Trial remains paused.' }
+}
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 Copy-Item -LiteralPath (Join-Path $state 'processes.json') -Destination (Join-Path $state "processes.$stamp.json")
 foreach ($record in $records | Where-Object { $_.repo -eq 'tracker' }) {

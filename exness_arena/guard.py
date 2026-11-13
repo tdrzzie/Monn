@@ -252,7 +252,14 @@ class Gateway:
             unit_loss = self.loss(r["type"], r["symbol"], 1.0, price, sl)
             if unit_loss <= 0:
                 raise GuardError("Invalid stop-loss risk")
-            budget = min(c["risk_budget_usc"], loss_headroom, c["total_risk_budget_usc"] - total)
+            budget = min(c["risk_budget_usc"], loss_headroom)
+            if 'total_risk_budget_usc' not in c:
+                raise GuardError('Combined open-risk setting is missing; use null to disable it explicitly')
+            combined_cap = c['total_risk_budget_usc']
+            if combined_cap is not None:
+                if not finite_positive(combined_cap):
+                    raise GuardError('Invalid combined open-risk cap')
+                budget = min(budget, combined_cap - total)
             # Reserve 10% for normal execution drift; never round volume upward.
             requested = float(r.get("volume", 0))
             if not finite_positive(requested):

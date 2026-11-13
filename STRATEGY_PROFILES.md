@@ -63,3 +63,7 @@ Read-only `exness_trial.py --audit-all` evaluates registered strategies without 
 - **tradingbot / rl_ppo:** No validated trained policy artifact.
 - **tradingbot / regime_switch:** No validated fitted regime model.
 - **mt5_live_trading_bot / placeholder_signal_adapter:** Explicitly marked as placeholder upstream; not a separate validated strategy.
+
+## Combined-cap removal
+
+At the user's request, `total_risk_budget_usc` is explicitly `null`: there is no combined open-risk cap. The 3.50 USC per-position cap, 0.01 cent-lot volume cap, strategy position/profitable-addition rules, 5.2444 USC strategy and repo loss budgets, 1% account drawdown entry halt, ownership, deduplication and tracking remain unchanged. Stop-risk continues to be valued by the broker and every position still requires a server-side stop. A missing or malformed combined-cap setting fails closed; only explicit null disables it. No loss counter, equity baseline or strategy halt is reset.
