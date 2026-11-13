@@ -64,6 +64,30 @@ Read-only `exness_trial.py --audit-all` evaluates registered strategies without 
 - **tradingbot / regime_switch:** No validated fitted regime model.
 - **mt5_live_trading_bot / placeholder_signal_adapter:** Explicitly marked as placeholder upstream; not a separate validated strategy.
 
-## Combined-cap removal
+## Current shared trading rules
 
-At the user's request, `total_risk_budget_usc` is explicitly `null`: there is no combined open-risk cap. The 3.50 USC per-position cap, 0.01 cent-lot volume cap, strategy position/profitable-addition rules, 5.2444 USC strategy and repo loss budgets, 1% account drawdown entry halt, ownership, deduplication and tracking remain unchanged. Stop-risk continues to be valued by the broker and every position still requires a server-side stop. A missing or malformed combined-cap setting fails closed; only explicit null disables it. No loss counter, equity baseline or strategy halt is reset.
+These rules apply to all five repositories. Numeric values and enabled profiles are rendered from the local live settings; execution semantics are maintained alongside `Monn/exness_arena/guard.py`. USC means US cents (100 USC = USD 1).
+
+| Rule | Current setting |
+|---|---|
+| Per-position stop-risk ceiling | 3.50 USC for every strategy |
+| Combined open-risk cap | Disabled (`total_risk_budget_usc: null`); no combined open-risk cap |
+| Maximum order volume | 0.01 cent lots; broker minimum/step still apply |
+| Strategy loss budget | 5.2444 USC |
+| Repository loss backstop | 5.2444 USC shared by that repo's strategies |
+| Account drawdown entry halt | 1% equity decline from the preserved trial baseline |
+| Quote age ceiling | 30 seconds |
+| Position-count ceiling | None per strategy, pair, repository or account |
+| Position-rule scope | Repository + strategy + pair + direction |
+
+A strategy may hold a first buy and first sell on the same pair together. Every additional position in a direction requires **every existing position from that same strategy on that pair and direction** to be individually profitable after swap and known opening fees. Zero, negative or non-finite net profit blocks additions. A profitable basket cannot hide a losing position. Other strategies have independent position rules; an opposite signal does not automatically close existing positions.
+
+Every new entry needs a fresh qualifying closed M15 signal and must fit the per-position ceiling and remaining strategy/repo loss headroom. Sizing reserves 10% for execution drift, rounds volume down and skips signals when the broker's minimum volume cannot fit. Entry margin must not exceed 10% of free margin, and spread must not exceed 15% of stop distance. Equal ceilings do not imply equal exposure or trade counts.
+
+Strategy/repo loss checks use booked deal P&L including swap, commissions and fees since the preserved trial start; they are net-loss thresholds, not gross-loss counters. Profits do not raise the configured ceilings. The account equity gate also includes manual/external positions. Loss gates block new entries; they do not automatically liquidate the book or guarantee a maximum realized loss. Stops may slip or gap.
+
+Every position requires a broker-valued server-side stop. Stop removal/widening, pending entries, upward lot rounding, account switching and changes to sibling-strategy/manual positions are prohibited. Existing manual positions remain outside bot results. All registered trial positions retain ownership and stop validation, including positions from subsequently disabled strategies.
+
+Missing account/history state, unavailable stop valuation, stale quotes, a missing/stale tracker heartbeat (90 seconds), unexpected trial pending orders and ambiguous submissions block new risk. Strategy evaluation failures quarantine only that strategy. Halts, quarantines, loss history and equity baselines never reset automatically on restart or a rule change.
+
+Every strategy has a stable identity and magic in `Monn/exness_arena/registry.json`. The shared journal attributes deals and positions by original opening ownership and stable position ID, including partial closes and manual exits. Results remain separate by repository and strategy. The tracker exports `results.csv`, `strategies.csv` and `positions.csv` under the local `Monn/.exness-arena/` directory.
