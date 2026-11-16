@@ -279,6 +279,8 @@ def run_loop(bot, gateway, kind, watchlist, cycles, once=False):
                                 try:
                                     from .research import evaluate
                                     message = evaluate(cycles[strategy], scoped, bot, strategy, symbol, rates)
+                                except DisconnectedError:
+                                    raise
                                 except Exception:
                                     detail = traceback.format_exc()
                                     # Only a confirmed disconnection avoids strategy quarantine.

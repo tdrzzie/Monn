@@ -162,6 +162,20 @@ def test_recovery_preserves_drawdown_halt_and_shadow_tracking(lab,monkeypatch):
         assert db.execute('SELECT COUNT(*) FROM shadows').fetchone()[0]==5
 
 
+def test_known_disconnect_does_not_quarantine_if_connection_already_returned(lab,monkeypatch):
+    g,n,p,module,initialized,shutdown=loop_lab(lab,monkeypatch)
+    def interrupted(*args):
+        # The bridge can reconnect between the failed read and error handling.
+        assert n.connected
+        raise DisconnectedError('temporary data outage')
+    monkeypatch.setattr(research,'evaluate',interrupted)
+    runner.run_loop('Monn',module,'monn',['EURUSDc'],{'ma_cross':lambda *a:None},once=True)
+    assert initialized==[1] and not n.sent
+    with common.locked() as db:
+        assert db.execute("SELECT COUNT(*) FROM flags WHERE name LIKE 'strategy_halt:%'").fetchone()[0]==0
+        assert db.execute('SELECT COUNT(*) FROM strategy_decisions').fetchone()[0]==1
+
+
 def test_online_strategy_failure_still_quarantines(lab,monkeypatch):
     g,n,p,module,initialized,shutdown=loop_lab(lab,monkeypatch)
     def broken(*a):
