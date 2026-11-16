@@ -8,7 +8,8 @@
       "price_action",
       "rsi_hidden_divergence",
       "rsi_regular_divergence",
-      "trend_following"
+      "trend_following",
+      "price_action_1r"
     ],
     "excluded": {
       "zigzag_follower": "Lookup name exists, but no implementation or original configuration is present"
@@ -34,7 +35,9 @@
       "bollinger_revert",
       "vol_squeeze",
       "orb",
-      "managed_gold"
+      "managed_gold",
+      "bollinger_reversed",
+      "zscore_reversed"
     ],
     "excluded": {
       "macro_factor": "No point-in-time DXY and real-yield feed configured",
@@ -109,5 +112,6 @@
       "SP02": "Formation inputs and broker-qualified non-atomic two-leg execution required",
       "all": "Shared drawdown halt is authoritative; missing execution qualification blocks orders"
     }
-  }
+  },
+  "promotion_policy": "Four user-selected live candidates; all other profiles test-only. Readiness is not profitability validation; existing halts and losses remain authoritative."
 }

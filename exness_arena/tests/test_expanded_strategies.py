@@ -108,7 +108,8 @@ def test_unconfigured_external_inputs_are_not_candidates():
     data=json.loads((common.PACKAGE/'compatibility.json').read_text())
     excluded=data['tradingbot']['excluded']
     assert {'macro_factor','risk_off','ml_gbm','meta_label','rl_ppo','regime_switch','intraday_seasonality'}<=set(excluded)
-    assert len(NEW)==19
+    assert len([x for x in NEW if not identity.strategies(x[0])[x[1]].get('source_strategy')])==19
+    assert len(NEW)==22
 
 
 def test_aurum_non_primary_artifact_is_separate_and_hash_verified(tmp_path,monkeypatch):

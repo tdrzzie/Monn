@@ -20,6 +20,9 @@ def policy(c):
     overrides = ', '.join(f'{symbol}: {cap:g}' for symbol, cap in sorted(c.get('max_volume_by_symbol', {}).items())) or 'None'
     protection = json.loads((ROOT / 'exness_arena/protection.json').read_text(encoding='utf-8'))
     protection_rows = '\n'.join(f"| {name} | {spec['mode']} | {spec['rules']} |" for name, spec in protection.items())
+    stages = c.get('strategy_stages', {})
+    promoted = [r + '/' + n for r, rows in stages.items() for n, stage in rows.items() if stage == 'live_candidate']
+    promotion_text = ', '.join('`' + n + '`' for n in promoted) or 'Legacy deployment; explicit stages not configured'
     return f"""## Current shared trading rules
 
 These shared guard rules apply to all configured repositories; AegisQuant adds its original stricter strategy/data gates without changing the existing five bots. Numeric values and enabled profiles are rendered from the local live settings; execution semantics are maintained alongside `Monn/exness_arena/guard.py`. USC means US cents (100 USC = USD 1).
@@ -68,6 +71,14 @@ Every strategy has a stable identity and magic in `Monn/exness_arena/registry.js
 AegisQuant research data can be sourced entirely through the pinned terminal API. Checksum-verified native BID M5 archives extend history without fabricating candles or historical asks. After a genuine gap, recursive indicators restart and must complete the original warmup before evaluation resumes. A broker tick up to 0.5 seconds ahead of the local clock is waited for; its timestamp is never backdated, and the unchanged freshness ceiling still applies. The worker separately records prospective contract/funding observations and closed five-minute native bid/ask tick windows, including empty/unavailable/invalid ranges. These are data records, not completed training labels. Today's funding and contracts are never projected backward as historical facts.
 
 ML candidate fitting is isolated by child strategy/version, symbol, broker and cost version. It requires verified executable labels, at least 500 training examples across 120 dates, chronological splits, overlap purging and a declared maximum-horizon embargo. The last 20% stays reserved. Fitted candidates remain unapproved with live execution disabled; cost stress, forward validation and review remain required. Missing data or insufficient labels remains an explicit block. The existing gross exit shadows cannot be silently converted into these labels. See `aegisquant/RESEARCH_SOURCING.md` for commands, artifacts and limitations. The offline qualified net-R replay pipeline supports TF01, BR01, OR01, OR02, MR01 and BT01 captured signals with original exits, dated contract/cost/margin/conversion/financing evidence, immutable receipts and independent replay verification before training. Missing evidence and censored paths never become labels. Initial collected-data execution revalidated two signals, qualified zero and trained zero models; no automatic promotion or live policy change occurs. See `aegisquant/REPLAY_LABELS.md`.
+
+## Strategy deployment stages
+
+Scanning enablement and live entry eligibility are separate. Live candidates: {promotion_text}. Every other registered strategy is test-only: it continues eligible scans and prospective shadow tests, but the shared guard refuses new live entries. Test-only evaluations use an explicit `test_only` cohort, not reconstructed startup evidence. Existing owned positions may still receive their permitted closes/protection updates.
+
+The selected recipes are frozen in `Monn/exness_arena/promotion_policy.json`: Aurum `bollinger_reversed` and `zscore_reversed` reverse the original signals and swap their original TP/SL; `vol_squeeze` retains its original direction and existing 2 ATR(14) stop / 4 ATR(14) target; Monn `price_action_1r` retains the original signal/configuration and tick-rounded adjusted stop with a 1R target. Derived variants have unique magics and separate claims/ownership; historical originals are never relabeled. Original signal sources, transforms and per-instrument Aurum artifacts are pinned; drift blocks entries instead of silently changing the selected rules. Artifact fingerprints remain private.
+
+These are user-selected research candidates, not validated profitable strategies. Promotion never clears the account drawdown halt, strategy quarantine, repo/strategy loss history, baseline or claims. Existing repo losses continue blocking entries, including promoted Aurum candidates when its repo allowance is exhausted. Risk ceilings, minimum-lot checks, position/addition rules and the disabled combined cap remain unchanged. There is no automatic re-promotion or halt reset.
 """
 
 
@@ -78,11 +89,11 @@ def render(c, repo, rules):
 
 Only `exness_trial.py` is the guarded live entry point. Original upstream entry points bypass this shared-account trial and must not be used. The shared execution package and tracker live in sibling `Monn/exness_arena`; keep the configured repositories in sibling folders.
 
-## Enabled deployment
+## Enabled scanning deployment
 
-This repo is {'enabled' if repo in c['enabled_bots'] else 'disabled'} in the live configuration, with {len(enabled)} enabled profiles: {', '.join('`' + s + '`' for s in enabled)}.
+This repo is {'enabled' if repo in c['enabled_bots'] else 'disabled'} in the live configuration, with {len(enabled)} scan-enabled profiles: {', '.join('`' + s + '`' for s in enabled)}.
 
-Across the configured repos there are {sum(len(c['enabled_strategies'][r]) for r in REPOS)} enabled profiles ({counts}). Enabled configuration is not a claim of current process health or profitability. Consult the dashboard for running, quarantined and halted status.
+Across the configured repos there are {sum(len(c['enabled_strategies'][r]) for r in REPOS)} scan-enabled profiles ({counts}). Scan enablement is not live authorization or a claim of current process health or profitability. Consult the dashboard for running, quarantined and halted status.
 
 Broker pair discovery is {'enabled' if c.get('discover_pairs') else 'disabled'}; the current watchlist contains {len(c['symbols'])} instruments. Inventory refreshes every minute. Compatible strategies scan discovered tradable cent currency, metal and crypto pairs plus the five approved oil/index CFDs: `UKOILc`, `USOILc`, `USTECc`, `US30c`, and `US500c`. Sunrise retains eight pair-specific profiles; Aurum `managed_gold` is gold-only. Disabled/close-only symbols, unapproved non-pair contracts and conversion indicators cannot receive new entries. Monn, MT5-Python-Trading, Aurum (except gold-only `managed_gold`) and SuperTrend include all five CFDs; Sunrise has no original oil/index profile and remains restricted to its eight original instruments. Each CFD signal must still pass broker history, stop valuation, minimum-volume, margin, spread and session/order checks; inclusion does not guarantee an entry. Broker specifications checked on 2026-11-13: oil minimum volume is 0.01; `USTECc`/`US30c` minimum volume is 0.05 and `US500c` is 0.14. Index-specific ceilings are configured at those broker minimums; all other symbols retain the default lot ceiling shown below. Index entries are eligible only when the actual broker-valued stop risk fits the unchanged 3.50 USC per-position ceiling, its existing 10% execution reserve and remaining loss headroom. The guard never rounds volume upward or tightens a strategy stop merely to fit a lot minimum. A later increase in broker minimum volume causes entries to be skipped until explicitly reviewed; ceilings do not rise automatically. Contract specifications can change; the live guard always rechecks broker limits. Missing history is reported per strategy/pair. See `Monn/STRATEGY_PROFILES.md` for strategy magics, pair scopes and execution conventions, and `Monn/exness_arena/compatibility.json` for exclusions. Claude Trader is skipped; EA31337 remains blocked and is not part of the active deployment.
 

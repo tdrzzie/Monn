@@ -106,6 +106,10 @@ def crossover_cycle(gateway, symbol, rates):
 def cycle_for(bot, strategy):
     spec = strategies(bot)[strategy]
     kind = spec.get('adapter', REGISTRY[bot]['runner'])
+    if spec.get('source_strategy'):
+        from .promotion import recipe_cycle
+        source = spec['source_strategy']
+        return kind, recipe_cycle(cycle_for(bot, source)[1], source, spec['execution_variant'])
     if kind == 'monn':
         return kind, monn_cycle
     if kind == 'crossover':

@@ -3,6 +3,8 @@ $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $workspace '.arena-venv\Scripts\python.exe'
 $state = Join-Path $PSScriptRoot '.exness-arena'
+$basePython = (& $python -c 'import sys; print(sys._base_executable)').Trim()
+if ($LASTEXITCODE -ne 0 -or -not $basePython) { throw 'Cannot verify the virtual environment base interpreter.' }
 $env:PYTHONPATH = $PSScriptRoot
 $settings = Get-Content -LiteralPath (Join-Path $state 'settings.json') -Raw | ConvertFrom-Json
 $enabledBots = @($settings.enabled_bots)
@@ -13,7 +15,7 @@ foreach ($record in $records) {
     $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$($record.pid)"
     if (-not $procInfo) { continue }
     $expected = if ($record.repo -eq 'tracker') { 'exness_arena.tracker' } else { "$($record.repo)\exness_trial.py" }
-    if ($procInfo.ExecutablePath -ne $python -or -not $procInfo.CommandLine.Contains($expected)) { throw "Process identity mismatch: $($record.repo)" }
+    if ($procInfo.ExecutablePath -notin @($python, $basePython) -or -not $procInfo.CommandLine.Contains($python) -or -not $procInfo.CommandLine.Contains($expected)) { throw "Process identity mismatch: $($record.repo)" }
 }
 $token = [guid]::NewGuid().ToString()
 Set-Content -LiteralPath $marker -Value $token -NoNewline
@@ -48,7 +50,7 @@ foreach ($record in $records | Where-Object { $_.repo -eq 'tracker' }) {
 $trackerOut = Join-Path $state "tracker.$stamp.out.log"
 $trackerErr = Join-Path $state "tracker.$stamp.err.log"
 $tracker = Start-Process -FilePath $python -ArgumentList '-u','-m','exness_arena.tracker' -WorkingDirectory $workspace -WindowStyle Hidden -RedirectStandardOutput $trackerOut -RedirectStandardError $trackerErr -PassThru
-$deadline = (Get-Date).AddSeconds(30)
+$deadline = (Get-Date).AddSeconds(60)
 $healthy = $false
 do {
     $tracker.Refresh()

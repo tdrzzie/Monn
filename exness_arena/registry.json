@@ -55,6 +55,15 @@
         "config": "trend_following_config.json",
         "history_bars": 600,
         "minimum_bars": 550
+      },
+      "price_action_1r": {
+        "magic": 26112303,
+        "adapter": "monn_library",
+        "config": "price_action_config.json",
+        "history_bars": 600,
+        "minimum_bars": 550,
+        "source_strategy": "price_action",
+        "execution_variant": "target_1r"
       }
     }
   },
@@ -216,6 +225,22 @@
         "symbols": [
           "XAUUSDc"
         ]
+      },
+      "bollinger_reversed": {
+        "magic": 26112301,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550,
+        "source_strategy": "bollinger_revert",
+        "execution_variant": "reversed_swap"
+      },
+      "zscore_reversed": {
+        "magic": 26112302,
+        "adapter": "aurum",
+        "history_bars": 600,
+        "minimum_bars": 550,
+        "source_strategy": "zscore_fade",
+        "execution_variant": "reversed_swap"
       }
     }
   },

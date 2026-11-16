@@ -137,7 +137,7 @@ def version(db, cfg, artifact_hash=None):
     # Explicit allowlist keeps account identity and credentials outside research config snapshots.
     keys = ('risk_budget_usc', 'bot_loss_budget_usc', 'strategy_loss_budget_usc', 'total_risk_budget_usc',
             'account_loss_fraction', 'initial_equity_usc', 'start_epoch', 'max_volume', 'max_volume_by_symbol',
-            'max_quote_age_seconds', 'position_policy', 'enabled_bots', 'enabled_strategies', 'symbols', 'live')
+            'max_quote_age_seconds', 'position_policy', 'enabled_bots', 'enabled_strategies', 'symbols', 'live', 'strategy_stages', 'promotion_policy_sha256')
     safe = {k: cfg[k] for k in keys if k in cfg}
     safe['artifact_manifest_sha256'] = artifact_hash
     safe['shadow_plan'] = PLAN_ID
@@ -203,6 +203,9 @@ class Recorder:
     def __init__(self, gateway, bot, strategy, symbol, rates, mode):
         self.gateway = gateway
         self.cfg = settings()
+        from .promotion import live_selected
+        if mode == 'live_evaluation' and not live_selected(self.cfg, bot, strategy):
+            mode = 'test_only'
         self.bot, self.strategy, self.symbol, self.mode = bot, strategy, symbol, mode
         self.attempts = []; self.features = features(rates)
         self.bar = int(rates[-1]['time'])
@@ -219,7 +222,9 @@ class Recorder:
         with connect() as db:
             artifact_hash = None
             if bot == 'tradingbot':
-                artifact = STATE/'artifacts'/'aurum_ema'/symbol if strategy == 'ema_cross' else STATE/'artifacts'/'aurum_rules'/strategy/symbol
+                from .identity import strategies
+                source_strategy = strategies(bot)[strategy].get('source_strategy', strategy)
+                artifact = STATE/'artifacts'/'aurum_ema'/symbol if source_strategy == 'ema_cross' else STATE/'artifacts'/'aurum_rules'/source_strategy/symbol
                 manifest = artifact/'manifest.json'
                 if manifest.exists():
                     artifact_hash = hashlib.sha256(manifest.read_bytes()).hexdigest()
@@ -253,7 +258,9 @@ class Recorder:
 class ObservedGateway:
     """One evaluation, one unchanged real call per proposal; paper mode never delegates orders."""
     def __init__(self, gateway, recorder, paper=False):
-        self.gateway, self.recorder, self.paper = gateway, recorder, paper
+        from .promotion import live_selected
+        test_only = not live_selected(getattr(recorder, 'cfg', {}), getattr(recorder, 'bot', ''), getattr(recorder, 'strategy', ''))
+        self.gateway, self.recorder, self.paper = gateway, recorder, paper or test_only
 
     def record_features(self, **values):
         self.recorder.features.update(plain(values))
@@ -267,7 +274,7 @@ class ObservedGateway:
         attempt = {'request': plain(dict(request)), 'quote': quote, 'observed': time.time()}
         self.recorder.attempts.append(attempt)
         try:
-            if self.paper:
+            if self.paper and not (getattr(self.recorder, 'mode', '') == 'test_only' and request.get('position')):
                 from types import SimpleNamespace
                 result = SimpleNamespace(retcode=10006, comment='research-only; no live order submitted', order=0, deal=0)
             else:
@@ -294,9 +301,13 @@ class ObservedGateway:
 
 
 def evaluate(cycle, gateway, bot, strategy, symbol, rates, paper=False):
+    from .promotion import live_selected
+    test_only = not live_selected(settings(), bot, strategy)
+    mode = 'paper_seed' if paper else 'test_only' if test_only else 'live_evaluation'
+    paper = paper or test_only
     recorder = None
     try:
-        recorder = Recorder(gateway, bot, strategy, symbol, rates, 'paper_seed' if paper else 'live_evaluation')
+        recorder = Recorder(gateway, bot, strategy, symbol, rates, mode)
     except Exception as exc:
         research_error('begin decision', exc)
     if paper and recorder is None:

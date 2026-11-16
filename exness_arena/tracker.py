@@ -132,6 +132,8 @@ def collect():
         row["status"] = statuses.get(row["repo"], {"status": "blocked", "detail": REGISTRY[row["repo"]].get("blocked", "not started")})
     for row in strategy_rows:
         row['status'] = strategy_health.get(row['strategy_key'], statuses.get(row['repo'], {'status': 'not_started'}))
+        from .promotion import live_selected
+        row['deployment_stage'] = 'live_candidate' if live_selected(cfg, row['repo'], row['strategy']) else 'test_only'
         if row['repo'] in cfg['enabled_bots'] and row['strategy'] not in cfg.get('enabled_strategies', {}).get(row['repo'], [s['strategy'] for s in strategy_specs.values() if s['repo'] == row['repo']]):
             row['status'] = {'status': 'disabled', 'detail': 'Strategy is registered but not enabled'}
     data = {"updated_utc": timestamp, "currency": "USC", "rows": rows,
@@ -145,6 +147,8 @@ def collect():
             "watchlist": cfg["symbols"], "coverage": coverage,
             "strategies": strategy_rows, "positions": position_rows, "strategy_coverage": strategy_coverage,
             "compatibility": json.loads((PACKAGE / 'compatibility.json').read_text()) if (PACKAGE / 'compatibility.json').exists() else {},
+            "strategy_stages": cfg.get("strategy_stages", {}),
+            "promotion_policy_sha256": cfg.get("promotion_policy_sha256"),
             "risk_limits": {"default_max_volume": cfg["max_volume"], "max_volume_by_symbol": cfg.get("max_volume_by_symbol", {}), "per_position_usc": cfg['risk_budget_usc'], "combined_open_risk_cap_usc": cfg.get('total_risk_budget_usc'),
                             "strategy_loss_usc": cfg.get('strategy_loss_budget_usc', cfg['bot_loss_budget_usc']),
                             "repo_loss_usc": cfg['bot_loss_budget_usc'], "account_drawdown_fraction": cfg['account_loss_fraction']},

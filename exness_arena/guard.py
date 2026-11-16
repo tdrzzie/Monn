@@ -148,6 +148,13 @@ class Gateway:
             raise GuardError("Bot has not passed readiness checks")
         if self.strategy not in c.get('enabled_strategies', {}).get(self.bot, list(strategies(self.bot))):
             raise GuardError('Strategy is not enabled')
+        from .promotion import live_selected, frozen_issue
+        if not live_selected(c, self.bot, self.strategy):
+            raise GuardError('Strategy is test-only; live entries disabled')
+        if c.get('strategy_stages') is not None:
+            issue = frozen_issue(self.bot, self.strategy, symbol, c.get('promotion_policy_sha256', 'MISSING'), c.get('promotion_artifact_sha256'))
+            if issue:
+                raise GuardError(issue)
         allowed_symbols = strategies(self.bot)[self.strategy].get('symbols')
         if allowed_symbols and symbol not in allowed_symbols:
             raise GuardError('Pair is outside this strategy parameter profile')

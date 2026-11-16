@@ -30,5 +30,9 @@
   "aegisquant": {
     "mode": "original strategy protection; readiness gated",
     "rules": "29 literal strategy/controller modules; market/structural/ATR protection remains strategy-specific. Controllers emit routing/filter intents and are not extra P&L streams. Pending orders and unqualified multi-leg execution are not silently emulated. Shared3.50USC risk ceiling and persistent halt remain authoritative. Native execution requires a separately verified cost/slippage/parity profile; missing prerequisites block orders."
+  },
+  "promoted_variants": {
+    "mode": "frozen user-selected shadow recipes",
+    "rules": "bollinger_reversed and zscore_reversed retain original Aurum signal parameters, reverse direction and swap the original TP/SL; size independently. price_action_1r retains original price-action parameters and adjusted SL, targeting one initial price-risk distance. vol_squeeze retains its existing original direction and 2 ATR(14) SL / 4 ATR(14) TP fallback. Original versions stay test-only except vol_squeeze. No historical positions are relabeled or modified."
   }
 }
