@@ -1,14 +1,41 @@
 {
   "Monn": {
-    "enabled_candidates": ["ma_cross", "break_strategy", "macd_divergence", "ma_heikin_ashi", "price_action", "rsi_hidden_divergence", "rsi_regular_divergence", "trend_following"],
-    "excluded": {"zigzag_follower": "Lookup name exists, but no implementation or original configuration is present"}
+    "enabled_candidates": [
+      "ma_cross",
+      "break_strategy",
+      "macd_divergence",
+      "ma_heikin_ashi",
+      "price_action",
+      "rsi_hidden_divergence",
+      "rsi_regular_divergence",
+      "trend_following"
+    ],
+    "excluded": {
+      "zigzag_follower": "Lookup name exists, but no implementation or original configuration is present"
+    }
   },
   "MT5-Python-Trading": {
-    "enabled_candidates": ["crossover", "smc", "trend_breakout", "combined"],
+    "enabled_candidates": [
+      "crossover",
+      "smc",
+      "trend_breakout",
+      "combined"
+    ],
     "excluded": {}
   },
   "tradingbot": {
-    "enabled_candidates": ["ema_cross", "tsmom", "donchian", "kalman_trend", "zscore_fade", "rsi2", "bollinger_revert", "vol_squeeze", "orb", "managed_gold"],
+    "enabled_candidates": [
+      "ema_cross",
+      "tsmom",
+      "donchian",
+      "kalman_trend",
+      "zscore_fade",
+      "rsi2",
+      "bollinger_revert",
+      "vol_squeeze",
+      "orb",
+      "managed_gold"
+    ],
     "excluded": {
       "macro_factor": "No point-in-time DXY and real-yield feed configured",
       "risk_off": "No point-in-time VIX and DXY feed configured",
@@ -20,8 +47,67 @@
     }
   },
   "mt5_live_trading_bot": {
-    "enabled_candidates": ["sunrise_eurusd", "sunrise_gbpusd", "sunrise_xauusd", "sunrise_audusd", "sunrise_xagusd", "sunrise_usdchf", "sunrise_eurjpy", "sunrise_usdjpy"],
-    "excluded": {"placeholder_signal_adapter": "Explicitly marked as placeholder upstream; not a separate validated strategy"}
+    "enabled_candidates": [
+      "sunrise_eurusd",
+      "sunrise_gbpusd",
+      "sunrise_xauusd",
+      "sunrise_audusd",
+      "sunrise_xagusd",
+      "sunrise_usdchf",
+      "sunrise_eurjpy",
+      "sunrise_usdjpy"
+    ],
+    "excluded": {
+      "placeholder_signal_adapter": "Explicitly marked as placeholder upstream; not a separate validated strategy"
+    }
   },
-  "Forex-Trading-Bot": {"enabled_candidates": ["supertrend"], "excluded": {}}
+  "Forex-Trading-Bot": {
+    "enabled_candidates": [
+      "supertrend"
+    ],
+    "excluded": {}
+  },
+  "aegisquant": {
+    "enabled_candidates": [
+      "TF01",
+      "TF02",
+      "BR01",
+      "OR01",
+      "OR02",
+      "MR01",
+      "MR02",
+      "MO01",
+      "PA01",
+      "PA02",
+      "BT01",
+      "BT02",
+      "BT03",
+      "BT04",
+      "BT05",
+      "BT06",
+      "BT07",
+      "BT08",
+      "BT09",
+      "BT10",
+      "SW01",
+      "SW02",
+      "TS01",
+      "TS02",
+      "CA01",
+      "SP01",
+      "SP02",
+      "RG01",
+      "ML01"
+    ],
+    "excluded": {
+      "BTCTX01": "Reserved, undefined causal three-level context; never guessed"
+    },
+    "conditional": {
+      "ML01": "Approved per-child frozen model and>=500 labels/120 dates absent",
+      "CA01": "Point-in-time financing/fees/conversion dataset absent",
+      "SP01": "Formation inputs and broker-qualified non-atomic two-leg execution required",
+      "SP02": "Formation inputs and broker-qualified non-atomic two-leg execution required",
+      "all": "Shared drawdown halt is authoritative; missing execution qualification blocks orders"
+    }
+  }
 }

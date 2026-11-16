@@ -70,7 +70,7 @@ All enabled profiles record versioned research observations and independent pape
 
 ## Current shared trading rules
 
-These rules apply to all five repositories. Numeric values and enabled profiles are rendered from the local live settings; execution semantics are maintained alongside `Monn/exness_arena/guard.py`. USC means US cents (100 USC = USD 1).
+These shared guard rules apply to all configured repositories; AegisQuant adds its original stricter strategy/data gates without changing the existing five bots. Numeric values and enabled profiles are rendered from the local live settings; execution semantics are maintained alongside `Monn/exness_arena/guard.py`. USC means US cents (100 USC = USD 1).
 
 | Rule | Current setting |
 |---|---|
@@ -82,12 +82,12 @@ These rules apply to all five repositories. Numeric values and enabled profiles 
 | Repository loss backstop | 5.2444 USC shared by that repo's strategies |
 | Account drawdown entry halt | 1% equity decline from the preserved trial baseline |
 | Quote age ceiling | 30 seconds |
-| Position-count ceiling | None per strategy, pair, repository or account |
+| Shared position-count ceiling | None; AegisQuant retains its stricter original limits below |
 | Position-rule scope | Repository + strategy + pair + direction |
 
 A strategy may hold a first buy and first sell on the same pair together. Every additional position in a direction requires **every existing position from that same strategy on that pair and direction** to be individually profitable after swap and known opening fees. Zero, negative or non-finite net profit blocks additions. A profitable basket cannot hide a losing position. Other strategies have independent position rules; an opposite signal does not automatically close existing positions.
 
-Every new entry needs a fresh qualifying closed M15 signal and must fit the per-position ceiling and remaining strategy/repo loss headroom. Sizing reserves 10% for execution drift, rounds volume down and skips signals when the broker's minimum volume cannot fit. Entry margin must not exceed 10% of free margin, and spread must not exceed 15% of stop distance. Equal ceilings do not imply equal exposure or trade counts.
+The existing five bots require a fresh qualifying closed M15 signal. AegisQuant uses each specification's original closed-bar timeframe. Every entry must fit the per-position ceiling and remaining strategy/repo loss headroom. Sizing reserves 10% for execution drift, rounds volume down and skips signals when the broker's minimum volume cannot fit. Entry margin must not exceed 10% of free margin, and spread must not exceed 15% of stop distance. Equal ceilings do not imply equal exposure or trade counts.
 
 Strategy/repo loss checks use booked deal P&L including swap, commissions and fees since the preserved trial start; they are net-loss thresholds, not gross-loss counters. Profits do not raise the configured ceilings. The account equity gate also includes manual/external positions. Loss gates block new entries; they do not automatically liquidate the book or guarantee a maximum realized loss. Stops may slip or gap.
 
@@ -116,9 +116,46 @@ Original protection is used where the source strategy supplies executable price 
 | tradingbot/other | explicit protective fallback | ema_cross, tsmom, kalman_trend, zscore_fade, rsi2, bollinger_revert, vol_squeeze, orb and managed_gold expose forecasts/state exits rather than standalone broker SL/TP rules. Retain the existing 2 * ATR(14) SL and 4 * ATR(14) TP. |
 | MT5-Python-Trading | explicit protective fallback | crossover, smc, trend_breakout and combined expose direction only. Original multi_symbol_robot sends sl=None/tp=None; its stop_loss_pips is a sizing input, not an attached protection rule. Retain existing 2 * ATR(14) SL and 4 * ATR(14) TP. |
 | migration | new entries only | Existing broker positions keep their SL/TP. No stop widening/removal, mass position updates, forecast/time/channel liquidation, risk-budget change, halt reset, ownership change or decision replay. Dynamic/signal exits are not represented as invented static TP prices. |
+| aegisquant | original strategy protection; readiness gated | 29 literal strategy/controller modules; market/structural/ATR protection remains strategy-specific. Controllers emit routing/filter intents and are not extra P&L streams. Pending orders and unqualified multi-leg execution are not silently emulated. Shared3.50USC risk ceiling and persistent halt remain authoritative. Native execution requires a separately verified cost/slippage/parity profile; missing prerequisites block orders. |
 
 Every strategy has a stable identity and magic in `Monn/exness_arena/registry.json`. The shared journal attributes deals and positions by original opening ownership and stable position ID, including partial closes and manual exits. Results remain separate by repository and strategy. The tracker exports `results.csv`, `strategies.csv` and `positions.csv` under the local `Monn/.exness-arena/` directory.
 
 ## Paper research plan
 
 Plan `mfe-inversion-v2` adds prospective MFE entry-stop / peak-trail tests and independently sized reversed SL/TP signals alongside original / 1R / 3R exits. All retain the 3.50 USC sizing ceiling and symbol caps. Missing fixed TP and unaffordable minimum lots are explicit rejections. Legacy `targets-v1` observations stay unchanged; matched comparisons preserve strategy, version, plan and cohort identity and show pending pairs. These paper tests never change live rules or the drawdown halt. See `RESEARCH.md` for timing and cost limitations.
+
+## AegisQuant registered profiles
+
+Implementation is distinct from data/model/broker readiness. See `aegisquant/ACTIVATION.md`. Controllers do not have independent P/L.
+
+| Strategy | Magic | Original timeframe | Explicit candidate mapping |
+|---|---|---|---|
+| TF01 | 26112201 | M15 | US500c, USTECc, US30c, XAUUSDc, EURUSDc, USDJPYc |
+| TF02 | 26112202 | D1 | EURUSDc, USDJPYc, XAUUSDc, XAGUSDc, US500c, USOILc |
+| BR01 | 26112203 | M15 | US30c, US500c, USTECc, XAUUSDc, GBPUSDc, EURUSDc |
+| OR01 | 26112204 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| OR02 | 26112205 | M5 | US30c, US500c, USTECc |
+| MR01 | 26112206 | H1 | EURUSDc, USDCHFc, USDJPYc, US500c |
+| MR02 | 26112207 | RTH_D1 | US500c |
+| MO01 | 26112208 | H1 | USTECc, US500c, XAUUSDc, USOILc, EURUSDc |
+| PA01 | 26112209 | M15 | EURUSDc, GBPUSDc, XAUUSDc, US30c, USTECc |
+| PA02 | 26112210 | H1 | EURUSDc, GBPUSDc, US500c, XAUUSDc |
+| BT01 | 26112211 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT02 | 26112212 | H1 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT03 | 26112213 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT04 | 26112214 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT05 | 26112215 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT06 | 26112216 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT07 | 26112217 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT08 | 26112218 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT09 | 26112219 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| BT10 | 26112220 | M15 | EURUSDc, GBPUSDc, USDJPYc, GBPJPYc |
+| SW01 | 26112221 | M5 | EURUSDc, GBPUSDc, GBPJPYc |
+| SW02 | 26112222 | M15 | EURUSDc, GBPUSDc, USDJPYc, XAUUSDc, US30c |
+| TS01 | 26112223 | D1 | EURUSDc, USDJPYc, GBPUSDc, XAUUSDc, XAGUSDc, US500c, USOILc |
+| TS02 | 26112224 | D1 | EURUSDc, USDJPYc, GBPUSDc, XAUUSDc, XAGUSDc, US500c, USOILc |
+| CA01 | 26112225 | D1 | AUDJPYc, NZDJPYc, USDJPYc, EURUSDc, GBPUSDc |
+| SP01 | 26112226 | D1 | EURUSDc, GBPUSDc, USTECc, US500c |
+| SP02 | 26112227 | D1 | EURUSDc, GBPUSDc, USTECc, US500c |
+| RG01 | 26112228 | H1 | EURUSDc, USDJPYc |
+| ML01 | 26112229 | CHILD_EVENT | EURUSDc, GBPUSDc, USDJPYc, US500c, USTECc, US30c, XAUUSDc |

@@ -26,5 +26,9 @@
   "migration": {
     "mode": "new entries only",
     "rules": "Existing broker positions keep their SL/TP. No stop widening/removal, mass position updates, forecast/time/channel liquidation, risk-budget change, halt reset, ownership change or decision replay. Dynamic/signal exits are not represented as invented static TP prices."
+  },
+  "aegisquant": {
+    "mode": "original strategy protection; readiness gated",
+    "rules": "29 literal strategy/controller modules; market/structural/ATR protection remains strategy-specific. Controllers emit routing/filter intents and are not extra P&L streams. Pending orders and unqualified multi-leg execution are not silently emulated. Shared3.50USC risk ceiling and persistent halt remain authoritative. Native execution requires a separately verified cost/slippage/parity profile; missing prerequisites block orders."
   }
 }

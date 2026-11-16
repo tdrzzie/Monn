@@ -25,7 +25,7 @@ from .common import STATE, settings
 from .identity import resolve
 from .shadow_plan import PLAN_ID, PLAN, VARIANTS, MFE_VARIANTS
 
-REPOS = ('Monn', 'MT5-Python-Trading', 'tradingbot', 'mt5_live_trading_bot', 'Forex-Trading-Bot')
+REPOS = ('Monn', 'MT5-Python-Trading', 'tradingbot', 'mt5_live_trading_bot', 'Forex-Trading-Bot', 'aegisquant')
 _sources = None
 
 
@@ -142,7 +142,7 @@ def version(db, cfg, artifact_hash=None):
     safe['artifact_manifest_sha256'] = artifact_hash
     safe['shadow_plan'] = PLAN_ID
     env = {'python': sys.version}
-    for package in ('numpy', 'pandas', 'TA-Lib', 'MetaTrader5', 'backtrader'):
+    for package in ('numpy', 'pandas', 'TA-Lib', 'MetaTrader5', 'backtrader', 'scipy', 'statsmodels', 'scikit-learn', 'exchange_calendars'):
         try:
             env[package] = importlib.metadata.version(package)
         except importlib.metadata.PackageNotFoundError:
@@ -207,7 +207,9 @@ class Recorder:
         self.attempts = []; self.features = features(rates)
         self.bar = int(rates[-1]['time'])
         self.context = {'quote': plain(gateway.symbol_info_tick(symbol)), 'contract': plain(gateway.symbol_info(symbol)),
-                        'input_kind': 'exact closed native M15 window', 'research_schema': 1}
+                        'input_kind': 'exact closed '+getattr(gateway,'research_timeframe','M15')+' window', 'research_schema': 1}
+        if bot=='aegisquant':
+            self.context['aegisquant_input_id']=getattr(gateway,'research_input_id',None)
         journal = STATE / 'trial.sqlite3'
         if journal.exists():
             with closing(sqlite3.connect(journal.resolve().as_uri() + '?mode=ro', uri=True)) as live:

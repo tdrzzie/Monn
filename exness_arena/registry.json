@@ -239,5 +239,343 @@
         "magic": 26111307
       }
     }
+  },
+  "aegisquant": {
+    "magic": 26112201,
+    "runner": "aegisquant",
+    "default_strategy": "TF01",
+    "strategies": {
+      "TF01": {
+        "magic": 26112201,
+        "adapter": "aegisquant",
+        "symbols": [
+          "US500c",
+          "USTECc",
+          "US30c",
+          "XAUUSDc",
+          "EURUSDc",
+          "USDJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "TF02": {
+        "magic": 26112202,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "USDJPYc",
+          "XAUUSDc",
+          "XAGUSDc",
+          "US500c",
+          "USOILc"
+        ],
+        "entry_timeframe": "D1"
+      },
+      "BR01": {
+        "magic": 26112203,
+        "adapter": "aegisquant",
+        "symbols": [
+          "US30c",
+          "US500c",
+          "USTECc",
+          "XAUUSDc",
+          "GBPUSDc",
+          "EURUSDc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "OR01": {
+        "magic": 26112204,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "OR02": {
+        "magic": 26112205,
+        "adapter": "aegisquant",
+        "symbols": [
+          "US30c",
+          "US500c",
+          "USTECc"
+        ],
+        "entry_timeframe": "M5"
+      },
+      "MR01": {
+        "magic": 26112206,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "USDCHFc",
+          "USDJPYc",
+          "US500c"
+        ],
+        "entry_timeframe": "H1"
+      },
+      "MR02": {
+        "magic": 26112207,
+        "adapter": "aegisquant",
+        "symbols": [
+          "US500c"
+        ],
+        "entry_timeframe": "RTH_D1"
+      },
+      "MO01": {
+        "magic": 26112208,
+        "adapter": "aegisquant",
+        "symbols": [
+          "USTECc",
+          "US500c",
+          "XAUUSDc",
+          "USOILc",
+          "EURUSDc"
+        ],
+        "entry_timeframe": "H1"
+      },
+      "PA01": {
+        "magic": 26112209,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "XAUUSDc",
+          "US30c",
+          "USTECc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "PA02": {
+        "magic": 26112210,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "US500c",
+          "XAUUSDc"
+        ],
+        "entry_timeframe": "H1"
+      },
+      "BT01": {
+        "magic": 26112211,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT02": {
+        "magic": 26112212,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "H1"
+      },
+      "BT03": {
+        "magic": 26112213,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT04": {
+        "magic": 26112214,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT05": {
+        "magic": 26112215,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT06": {
+        "magic": 26112216,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT07": {
+        "magic": 26112217,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT08": {
+        "magic": 26112218,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT09": {
+        "magic": 26112219,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "BT10": {
+        "magic": 26112220,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "SW01": {
+        "magic": 26112221,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "GBPJPYc"
+        ],
+        "entry_timeframe": "M5"
+      },
+      "SW02": {
+        "magic": 26112222,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "XAUUSDc",
+          "US30c"
+        ],
+        "entry_timeframe": "M15"
+      },
+      "TS01": {
+        "magic": 26112223,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "USDJPYc",
+          "GBPUSDc",
+          "XAUUSDc",
+          "XAGUSDc",
+          "US500c",
+          "USOILc"
+        ],
+        "entry_timeframe": "D1"
+      },
+      "TS02": {
+        "magic": 26112224,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "USDJPYc",
+          "GBPUSDc",
+          "XAUUSDc",
+          "XAGUSDc",
+          "US500c",
+          "USOILc"
+        ],
+        "entry_timeframe": "D1"
+      },
+      "CA01": {
+        "magic": 26112225,
+        "adapter": "aegisquant",
+        "symbols": [
+          "AUDJPYc",
+          "NZDJPYc",
+          "USDJPYc",
+          "EURUSDc",
+          "GBPUSDc"
+        ],
+        "entry_timeframe": "D1"
+      },
+      "SP01": {
+        "magic": 26112226,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USTECc",
+          "US500c"
+        ],
+        "entry_timeframe": "D1"
+      },
+      "SP02": {
+        "magic": 26112227,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USTECc",
+          "US500c"
+        ],
+        "entry_timeframe": "D1"
+      },
+      "RG01": {
+        "magic": 26112228,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "USDJPYc"
+        ],
+        "entry_timeframe": "H1"
+      },
+      "ML01": {
+        "magic": 26112229,
+        "adapter": "aegisquant",
+        "symbols": [
+          "EURUSDc",
+          "GBPUSDc",
+          "USDJPYc",
+          "US500c",
+          "USTECc",
+          "US30c",
+          "XAUUSDc"
+        ],
+        "entry_timeframe": "CHILD_EVENT"
+      }
+    }
   }
 }

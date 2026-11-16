@@ -1,4 +1,4 @@
-export const REPOS={Monn:{name:'Monn',short:'M',style:'monn'},'MT5-Python-Trading':{name:'MT5 Python',short:'Py',style:'python'},tradingbot:{name:'Aurum',short:'Au',style:'aurum'},mt5_live_trading_bot:{name:'Sunrise',short:'S',style:'sunrise'},'Forex-Trading-Bot':{name:'SuperTrend',short:'ST',style:'supertrend'},'claude-trader':{name:'Claude Trader',short:'C',style:''},EA31337:{name:'EA31337',short:'EA',style:''}};
+export const REPOS={Monn:{name:'Monn',short:'M',style:'monn'},'MT5-Python-Trading':{name:'MT5 Python',short:'Py',style:'python'},tradingbot:{name:'Aurum',short:'Au',style:'aurum'},mt5_live_trading_bot:{name:'Sunrise',short:'S',style:'sunrise'},aegisquant:{name:'AegisQuant',short:'AQ',style:'monn'},'Forex-Trading-Bot':{name:'SuperTrend',short:'ST',style:'supertrend'},'claude-trader':{name:'Claude Trader',short:'C',style:''},EA31337:{name:'EA31337',short:'EA',style:''}};
 export const repoName=repo=>REPOS[repo]?.name||repo;
 export const human=value=>String(value??'').replaceAll('_',' ').replace(/\b\w/g,x=>x.toUpperCase());
 export const finite=value=>typeof value==='number'&&Number.isFinite(value);
