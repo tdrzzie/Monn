@@ -14,6 +14,10 @@ class GuardError(RuntimeError):
     pass
 
 
+class DisconnectedError(GuardError):
+    """Known unavailable MT5 connection; never an instruction to retry an order."""
+
+
 def finite_positive(value):
     return isinstance(value, (float, int)) and math.isfinite(value) and value > 0
 
@@ -48,17 +52,17 @@ class Gateway:
         a = self.native.account_info()
         t = self.native.terminal_info()
         c = self.cfg()
-        if a is None or t is None or not t.connected:
-            raise GuardError("MT5 disconnected")
-        if (a.login, a.server, a.currency, a.margin_mode) != (c["login"], c["server"], "USC", 2):
+        if a is not None and (a.login, a.server, a.currency, a.margin_mode) != (c["login"], c["server"], "USC", 2):
             raise GuardError("Terminal account does not match the pinned Exness USC hedging account")
+        if a is None or t is None or not t.connected:
+            raise DisconnectedError("MT5 disconnected")
         if not a.trade_allowed or not a.trade_expert or not t.trade_allowed or t.tradeapi_disabled:
             raise GuardError("Automated trading is unavailable")
         return a
 
     def initialize(self, *args, **kwargs):
         # Always reuse the pinned existing terminal. Never switch accounts using bot credentials.
-        if not self.native.initialize(path=self.cfg()["terminal_path"]):
+        if not self.native.initialize(path=self.cfg()["terminal_path"], timeout=5000):
             return False
         self.validate_account()
         return True

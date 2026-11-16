@@ -11,7 +11,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import MetaTrader5 as native
 from .common import REGISTRY, STATE, PACKAGE, health, locked, now, settings
-from .guard import Gateway
+from .guard import Gateway, DisconnectedError
+from .recovery import wait_for_connection
 from .identity import specs, resolve, default_strategy, strategy_key
 
 
@@ -227,8 +228,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    if not native.initialize(path=settings()["terminal_path"]):
-        raise RuntimeError("MT5 connection failed")
+    gateway = Gateway(native, 'Monn')
+    # The collector remains available while strategy runners are manually paused.
+    wait_for_connection(gateway, 'tracker', stop_path=None)
     collect()
     server = ThreadingHTTPServer(("127.0.0.1", 8765), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -237,6 +239,8 @@ def main():
         while True:
             try:
                 collect()
+            except DisconnectedError:
+                wait_for_connection(gateway, 'tracker', stop_path=None)
             except Exception as e:
                 health("tracker", "error", str(e))
                 print("Tracker error:", e, flush=True)

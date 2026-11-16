@@ -13,6 +13,8 @@ import time
 import traceback
 from pathlib import Path
 
+from .guard import DisconnectedError
+from .recovery import connected_read, wait_for_connection
 from .volume import entry_volume_cap
 from .common import REGISTRY, STATE, claim_strategy_bar, health, settings, strategy_halt, strategy_halt_reason
 from .identity import enabled_for_symbol, strategies
@@ -129,25 +131,9 @@ def minimum_bars(bot, strategy):
     return spec.get('minimum_bars', 550 if kind in PROFILES else 150)
 
 
-def main(bot):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--preflight", action="store_true", help="read-only account, data and import checks")
-    parser.add_argument("--once", action="store_true")
-    parser.add_argument('--audit-all', action='store_true', help='read-only validation of all registered strategies, without enabling them')
-    parser.add_argument('--research-once', action='store_true', help='record one paper-only decision per strategy/instrument; never submit live orders')
-    args = parser.parse_args()
-    if args.research_once:
-        args.preflight = True
-    os.environ["EXNESS_BOT_ID"] = bot
-    from . import mt5 as gateway
-
-    if not REGISTRY[bot]["runner"]:
-        health(bot, "blocked", REGISTRY[bot]["blocked"])
-        raise SystemExit(REGISTRY[bot]["blocked"])
-    if not gateway.initialize():
-        raise SystemExit("Cannot initialize MT5")
+def prepare_runner(bot, gateway, args):
     kind = REGISTRY[bot]['runner']
-    watchlist = refresh(gateway)
+    watchlist = connected_read(gateway, refresh, gateway)
     c = settings()
     if args.audit_all:
         args.preflight = True
@@ -159,6 +145,7 @@ def main(bot):
     failures = []
     audited = {}
     for symbol in watchlist:
+        gateway._gateway.validate_account()
         if not profile_supported(kind, symbol):
             coverage(bot, symbol, 'unsupported_profile', 'No original Sunrise parameter profile; no substituted strategy')
             continue
@@ -167,9 +154,10 @@ def main(bot):
             continue
         for strategy in enabled_for_symbol(bot, symbol, c):
             try:
-                rates = strategy_rates(gateway, bot, strategy, symbol)
+                rates = connected_read(gateway, strategy_rates, gateway, bot, strategy, symbol)
                 minimum = minimum_bars(bot, strategy)
                 if rates is None or len(rates) < minimum:
+                    gateway._gateway.validate_account()
                     coverage(bot, symbol, 'waiting_history', f'Need {minimum} closed M15 bars', strategy=strategy)
                     if args.audit_all:
                         failures.append({'strategy': strategy, 'symbol': symbol, 'error': 'Insufficient closed-bar history'})
@@ -183,12 +171,51 @@ def main(bot):
                 coverage(bot, symbol, "ready", "Closed M15 history and strategy validation passed", int(rates[-1]["time"]), strategy=strategy)
                 audited[strategy] = audited.get(strategy, 0) + 1
                 ready += 1
+            except DisconnectedError:
+                raise
             except Exception as exc:
+                gateway._gateway.validate_account()
                 if not args.audit_all:
                     raise
                 failures.append({'strategy': strategy, 'symbol': symbol, 'error': type(exc).__name__ + ': ' + str(exc)})
     if not ready:
         raise RuntimeError("No pairs have sufficient history; no orders sent")
+    return kind, watchlist, cycles, ready, audited, failures
+
+
+def main(bot):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--preflight", action="store_true", help="read-only account, data and import checks")
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument('--audit-all', action='store_true', help='read-only validation of all registered strategies, without enabling them')
+    parser.add_argument('--research-once', action='store_true', help='record one paper-only decision per strategy/instrument; never submit live orders')
+    args = parser.parse_args()
+    if args.research_once or args.audit_all:
+        args.preflight = True
+    os.environ["EXNESS_BOT_ID"] = bot
+    from . import mt5 as gateway
+
+    if not REGISTRY[bot]["runner"]:
+        health(bot, "blocked", REGISTRY[bot]["blocked"])
+        raise SystemExit(REGISTRY[bot]["blocked"])
+    if args.preflight:
+        if not gateway.initialize():
+            raise SystemExit("Cannot initialize MT5")
+    elif not wait_for_connection(gateway, bot, STATE / 'STOP'):
+        health(bot, 'stopped', 'Stopped while awaiting MT5; protection and halts preserved')
+        gateway.shutdown()
+        return
+    while True:
+        try:
+            kind, watchlist, cycles, ready, audited, failures = prepare_runner(bot, gateway, args)
+            break
+        except DisconnectedError:
+            if args.preflight:
+                raise
+            if not wait_for_connection(gateway, bot, STATE / 'STOP'):
+                health(bot, 'stopped', 'Stopped while awaiting MT5; protection and halts preserved')
+                gateway.shutdown()
+                return
     if args.preflight:
         if args.audit_all:
             import json
@@ -199,8 +226,12 @@ def main(bot):
                 raise SystemExit(1)
         print(f"{bot}: PASS {len(audited)} strategy profiles / {ready} pair checks; no orders sent")
         return
+    run_loop(bot, gateway, kind, watchlist, cycles, once=args.once)
+
+
+def run_loop(bot, gateway, kind, watchlist, cycles, once=False):
     health(bot, "running", "Waiting for a new closed bar")
-    print(f"{bot}: started, magic={REGISTRY[bot]['magic']}, risk cap={c['risk_budget_usc']:.4f} USC", flush=True)
+    print(f"{bot}: started, magic={REGISTRY[bot]['magic']}, risk cap={settings()['risk_budget_usc']:.4f} USC", flush=True)
     # Single-process lock prevents accidental duplicate launch. SQLite guard also serializes orders.
     lock_path = STATE / (bot + ".lock")
     with lock_path.open("a+b") as handle:
@@ -218,11 +249,12 @@ def main(bot):
                 try:
                     gateway._gateway.validate_account()
                     if time.monotonic() - last_refresh >= 60:
-                        watchlist = refresh(gateway)
+                        watchlist = connected_read(gateway, refresh, gateway)
                         last_refresh = time.monotonic()
                     messages = []
                     evaluated = 0
                     for symbol in watchlist:
+                        gateway._gateway.validate_account()
                         if not profile_supported(kind, symbol):
                             coverage(bot, symbol, 'unsupported_profile', 'No original Sunrise parameter profile; no substituted strategy')
                             continue
@@ -230,13 +262,15 @@ def main(bot):
                             coverage(bot, symbol, "unavailable", "Broker symbol selection failed")
                             continue
                         for strategy in enabled_for_symbol(bot, symbol, settings()):
+                            gateway._gateway.validate_account()
                             reason = strategy_halt_reason(bot, strategy)
                             if reason:
                                 coverage(bot, symbol, 'quarantined', reason, strategy=strategy)
                                 continue
-                            rates = strategy_rates(gateway, bot, strategy, symbol)
+                            rates = connected_read(gateway, strategy_rates, gateway, bot, strategy, symbol)
                             minimum = minimum_bars(bot, strategy)
                             if rates is None or len(rates) < minimum:
+                                gateway._gateway.validate_account()
                                 coverage(bot, symbol, 'waiting_history', f'Need {minimum} closed M15 bars', strategy=strategy)
                                 continue
                             bar = int(rates[-1]['time'])
@@ -247,10 +281,14 @@ def main(bot):
                                     message = evaluate(cycles[strategy], scoped, bot, strategy, symbol, rates)
                                 except Exception:
                                     detail = traceback.format_exc()
+                                    # Only a confirmed disconnection avoids strategy quarantine.
+                                    # The bar is already claimed and will not be replayed.
+                                    gateway._gateway.validate_account()
                                     strategy_halt(bot, strategy, detail)
                                     coverage(bot, symbol, 'quarantined', detail, bar, strategy=strategy)
                                     print(f'[{strategy}] quarantined: {detail}', flush=True)
                                     continue
+                                gateway._gateway.validate_account()
                                 coverage(bot, symbol, "evaluated", message, bar, strategy=strategy)
                                 evaluated += 1
                                 messages.append(symbol + " [" + strategy + "]: " + message)
@@ -259,6 +297,17 @@ def main(bot):
                                 coverage(bot, symbol, "monitoring", "Waiting for next closed M15 bar", bar, strategy=strategy)
                     supported = sum(profile_supported(kind, s) for s in watchlist)
                     health(bot, "running", f"Monitoring {supported}/{len(watchlist)} supported pair profiles; evaluated {evaluated} new closed M15 bars this pass")
+                except DisconnectedError:
+                    # A security/unknown failure during recovery must stay fatal.
+                    failed = True
+                    recovered = wait_for_connection(gateway, bot, STATE / 'STOP')
+                    failed = False
+                    if not recovered:
+                        break
+                    # Refresh current inventory/history on the next pass. Never
+                    # retry the interrupted cycle or erase its durable bar claim.
+                    last_refresh = float('-inf')
+                    continue
                 except Exception:
                     failed = True
                     detail = traceback.format_exc()
@@ -266,7 +315,7 @@ def main(bot):
                     print(detail, flush=True)
                     # Never resume after an unknown execution/strategy exception without inspection.
                     raise
-                if args.once:
+                if once:
                     break
                 time.sleep(10)
         finally:

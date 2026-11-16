@@ -38,3 +38,7 @@ For isolated UI review, `python -m exness_arena.dashboard_preview` with `Monn` o
 ## MFE and reversed-signal experiments
 
 Research includes a plan filter, six v2 exit variants, observed mean MFE/MAE, and separate legacy v1 rows. The matched signal comparison table shows original and alternative mean R, paired delta R and gross USC only for both-closed pairs, alongside all eligible, pending and missing-baseline counts. Pending cohorts are provisional. The unsupported/unaffordable table preserves per-variant rejection reasons, including missing fixed TP for reversal and minimum-lot risk failures. Outcome status filters only the exit table; pair completeness stays visible. Reversals use the opposite executable quote and independent risk sizing, so USC alone is not a like-sized comparison. No variant is promoted automatically. Detailed timing/cost assumptions are in `RESEARCH.md`.
+
+## Connection status
+
+Runner health distinguishes `reconnecting` (waiting for the configured MT5 terminal), `recovering` (connection/account validated, awaiting a successful scan) and `running` (scan completed). Disconnected runners are not counted as scanning. The tracker can reconnect independently while strategy runners are paused; entry guard heartbeat requirements remain unchanged. Stale snapshots remain stale until collection succeeds. A healthy connection or scanning status never clears the persistent drawdown halt.

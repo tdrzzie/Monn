@@ -95,6 +95,14 @@ Every position requires a broker-valued server-side stop. Stop removal/widening,
 
 Missing account/history state, unavailable stop valuation, stale quotes, a missing/stale tracker heartbeat (90 seconds), unexpected trial pending orders and ambiguous submissions block new risk. Strategy evaluation failures quarantine only that strategy. Halts, quarantines, loss history and equity baselines never reset automatically on restart or a rule change.
 
+### Connection recovery
+
+Normal runners wait through confirmed MT5 disconnections, including initial startup, and reconnect only to the configured terminal without supplying login credentials or switching accounts. Retry waits are 5, 10, 20 and then 30 seconds repeatedly; each terminal initialization has a 5-second IPC timeout. Recovery rechecks the pinned Exness USC hedging account and automated-trading permissions before a fresh scan. Missing account/terminal state suspends entries. Wrong-account, disabled-automation and unknown operational failures remain fatal; online strategy failures still quarantine that strategy.
+
+The dashboard reports `reconnecting` / `recovering` until a scan completes. The read-only tracker also reconnects and publishes a healthy heartbeat only after a successful collection. Its connection recovery ignores the strategy STOP marker, so monitoring remains independent of a manual trading pause. Runner retry waits check STOP at most every 0.5 seconds, with an in-progress terminal call bounded by its timeout. Preflight/research-once connection failures still return to the caller instead of waiting indefinitely.
+
+Recovery never retries an order, clears a claimed signal bar, replays missed signal bars, edits protection, resets a halt/quarantine, changes risk limits or resets loss/ownership/baseline records. A bar claimed before interruption stays claimed even if its outcome is uncertain. On reconnect the runner refreshes current inventory and closed history, and evaluates only the latest unclaimed closed M15 signal. Scanning and shadow observations can resume while the persistent drawdown halt continues blocking live entries. There is no general crash/Windows-reboot supervisor or automatic halt reset.
+
 ### Stop-loss and take-profit policy
 
 Original protection is used where the source strategy supplies executable price rules. Strategies without standalone price protection retain the explicit existing safety fallback; they are not described as having unique native SL/TP. A missing or invalid supported native stop skips the signal. All levels remain subject to the same broker validation and 3.50 USC risk ceiling; stops are never changed just to force a trade to fit.

@@ -69,3 +69,7 @@ $env:PYTHONPATH = (Resolve-Path Monn).Path
 Exports go to the private `Monn/.exness-arena/research-export/` directory as CSV tables and decompressed `inputs.jsonl`. They are research artifacts, not trading instructions. To seed the latest closed signal without sending orders, use a repo's guarded launcher with `--research-once`; repeat seeds with the same strategy/symbol/bar/version are ignored.
 
 Update this guide, the shared policy template and all five `EXNESS_TRIAL.md` files whenever research assumptions or live trading rules change. Use `python Monn/sync_trading_docs.py --check` to verify documentation consistency.
+
+## Disconnect recovery
+
+The five runners and read-only tracker reconnect to the pinned terminal after confirmed disconnects, with bounded backoff and account/permission validation. No new entry signals are evaluated while disconnected. Durable live bar claims and paper decision keys remain intact, so an interrupted evaluation/submission is never replayed. Recovery resumes current closed-bar observations without inventing missed entry signals or clearing the drawdown halt, risk/loss limits, quarantines, baseline or ownership. Existing virtual positions resume their original marking model when data returns. See `EXNESS_TRIAL.md` for retry timing and failure distinctions.
