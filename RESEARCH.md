@@ -73,3 +73,5 @@ Update this guide, the shared policy template and all five `EXNESS_TRIAL.md` fil
 ## Disconnect recovery
 
 The five runners and read-only tracker reconnect to the pinned terminal after confirmed disconnects, with bounded backoff and account/permission validation. No new entry signals are evaluated while disconnected. Durable live bar claims and paper decision keys remain intact, so an interrupted evaluation/submission is never replayed. Recovery resumes current closed-bar observations without inventing missed entry signals or clearing the drawdown halt, risk/loss limits, quarantines, baseline or ownership. Existing virtual positions resume their original marking model when data returns. See `EXNESS_TRIAL.md` for retry timing and failure distinctions.
+
+AegisQuant qualified net-R labels use the separate offline pipeline documented in `aegisquant/REPLAY_LABELS.md`. Existing gross arena exit comparisons are not training labels. Receipt and replay verification, full dated execution evidence and 500 fit examples over 120 dates remain mandatory; no live settings or halt are changed.
