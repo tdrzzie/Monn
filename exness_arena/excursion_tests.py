@@ -43,7 +43,7 @@ def fit(rows,cutoff):
 
 def source_identity(bot,sources):
     manifest=sources.get('manifest',{})
-    selected={p:h for p,h in manifest.items() if (p.startswith(bot+'/') and not any(s in p for s in ('/tests/','/exness_arena/','tools/','model_training','qualified_replay','replay_pipeline')))
+    selected={p:h for p,h in manifest.items() if (p.startswith(bot+'/') and p!='Monn/sync_trading_docs.py' and not any(s in p for s in ('/tests/','/exness_arena/','tools/','model_training','qualified_replay','replay_pipeline')))
               or p in ('Monn/exness_arena/adapters.py','Monn/exness_arena/expanded.py')}
     return digest(selected)
 

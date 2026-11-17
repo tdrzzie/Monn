@@ -135,3 +135,11 @@ def test_full_bootstrap_collection_is_forward_cost_aware_and_order_free(tmp_path
  with engine.connect(tmp_path) as db:
   labels=[json.loads(x['payload']) for x in db.execute("SELECT payload FROM trials WHERE variant='original'")]
   assert len(labels)==1 and labels[0]['observed_close_at']==1001 and labels[0]['mfe_r']==2
+
+def test_documentation_generator_does_not_fragment_signal_identity():
+ from exness_arena.excursion_tests import source_identity
+ original={'manifest':{'Monn/strategies/rule.py':'signal','Monn/sync_trading_docs.py':'old-docs'}}
+ changed={'manifest':{'Monn/strategies/rule.py':'signal','Monn/sync_trading_docs.py':'new-docs'}}
+ assert source_identity('Monn',original)==source_identity('Monn',changed)
+ changed['manifest']['Monn/strategies/rule.py']='new-signal'
+ assert source_identity('Monn',original)!=source_identity('Monn',changed)
