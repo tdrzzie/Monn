@@ -83,7 +83,7 @@ These shared guard rules apply to all configured repositories; AegisQuant adds i
 | Index-specific lot ceilings | US30c: 0.05, US500c: 0.14, USTECc: 0.05 cent lots; broker minimum/step still apply |
 | Strategy loss budget | 5.2444 USC |
 | Repository loss backstop | 5.2444 USC shared by that repo's strategies |
-| Account drawdown entry halt | 1% equity decline from the preserved trial baseline |
+| Account drawdown entry halt | 1% equity decline from the current explicitly authorized trial baseline |
 | Quote age ceiling | 30 seconds |
 | Shared position-count ceiling | None; AegisQuant retains its stricter original limits below |
 | Position-rule scope | Repository + strategy + pair + direction |
@@ -146,13 +146,17 @@ Prospective shadow portfolios aggregate concurrent floating and realized gross P
 
 Margin sums current linear per-lot standalone broker estimates, excluding hedge offsets and tier effects. No hypothetical capital baseline is invented, so percentage drawdown and margin utilization are unknown. Portfolios combine independent scenarios without enforcing live capital, loss or addition gates. Gross paths exclude commission, swap and extra slippage. Profitable closed shadows or a short/flat sampled window do not establish acceptable portfolio risk or justify automatic promotion. All live risk limits, source/artifact pins, ownership, loss records and the drawdown halt remain unchanged.
 
+## Trial periods and historical results
+
+A user-authorized new trial sets its start time and equity baseline from the pinned account. Repo and strategy loss gates count deals from that new start; their existing monetary allowances remain unchanged. The account drawdown gate measures the existing percentage against the new baseline. The separately preserved `history_start_epoch` keeps all prior deals in dashboard totals and historical charts. Ownership, claims, journals, historical samples and previous trial settings remain recorded. A trial reset clears only the reviewed account drawdown latch; strategy quarantines and unrelated halts are not silently cleared. Trial metadata in the dashboard API distinguishes the current risk period from cumulative results. Reconnection never performs this reset.
+
 ## Strategy deployment stages
 
 Scanning enablement and live entry eligibility are separate. Live candidates: `Monn/price_action_1r`, `tradingbot/vol_squeeze`, `tradingbot/bollinger_reversed`, `tradingbot/zscore_reversed`. Every other registered strategy is test-only: it continues eligible scans and prospective shadow tests, but the shared guard refuses new live entries. Test-only evaluations use an explicit `test_only` cohort, not reconstructed startup evidence. Existing owned positions may still receive their permitted closes/protection updates.
 
 The selected recipes are frozen in `Monn/exness_arena/promotion_policy.json`: Aurum `bollinger_reversed` and `zscore_reversed` reverse the original signals and swap their original TP/SL; `vol_squeeze` retains its original direction and existing 2 ATR(14) stop / 4 ATR(14) target; Monn `price_action_1r` retains the original signal/configuration and tick-rounded adjusted stop with a 1R target. Derived variants have unique magics and separate claims/ownership; historical originals are never relabeled. Original signal sources, transforms and per-instrument Aurum artifacts are pinned; drift blocks entries instead of silently changing the selected rules. Artifact fingerprints remain private.
 
-These are user-selected research candidates, not validated profitable strategies. Promotion never clears the account drawdown halt, strategy quarantine, repo/strategy loss history, baseline or claims. Existing repo losses continue blocking entries, including promoted Aurum candidates when its repo allowance is exhausted. Risk ceilings, minimum-lot checks, position/addition rules and the disabled combined cap remain unchanged. There is no automatic re-promotion or halt reset.
+These are user-selected research candidates, not validated profitable strategies. Promotion never clears the account drawdown halt, strategy quarantine, repo/strategy loss history, baseline or claims. Repo and strategy losses in the current trial continue blocking entries when their allowances are exhausted; prior-trial results remain visible but do not consume a newly authorized trial allowance. Risk ceilings, minimum-lot checks, position/addition rules and the disabled combined cap remain unchanged. There is no automatic re-promotion or halt reset.
 
 ## Paper research plan
 

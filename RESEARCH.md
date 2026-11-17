@@ -101,3 +101,7 @@ MAE/MFE can generate strategy/version-specific stop and target hypotheses. Norma
 ## MAE/MFE forward comparisons
 
 See [EXCURSION_TESTS.md](EXCURSION_TESTS.md) for frozen quantile hypotheses, support/censor gates, exact cost coverage, artifact lineage and limitations. The standalone engine reads the original journal and writes only its own research ledger. Profiles and comparison readiness appear on the Research dashboard for every registered strategy. Insufficient support remains explicit; no historical calibration profits are counted as forward results.
+
+## Explicit new live trial, 2026-11-17
+
+The user authorized a fresh account-equity baseline and new loss-counting period for the four selected live candidates. Historical trade results, sampled paths, ownership and claims remain intact. The tracker queries from the original `history_start_epoch`; entry loss gates query from the current trial `start_epoch`. All existing position risk, lot, margin, spread, addition and loss ceilings remain enforced. Account drawdown retains its existing percentage against the fresh baseline, and can halt again. No strategy quarantine is cleared by this transition.

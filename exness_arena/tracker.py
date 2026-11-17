@@ -68,7 +68,7 @@ def summarize(deals, positions, owners, cfg, samples=None, group_specs=None):
 def collect():
     cfg = settings()
     Gateway(native, "Monn").validate_account()
-    ds = native.history_deals_get(datetime.fromtimestamp(cfg["start_epoch"], timezone.utc), datetime.now(timezone.utc))
+    ds = native.history_deals_get(datetime.fromtimestamp(cfg.get("history_start_epoch", cfg["start_epoch"]), timezone.utc), datetime.now(timezone.utc))
     ps = native.positions_get()
     if ds is None or ps is None:
         raise RuntimeError("Native MT5 history/positions unavailable")
@@ -143,6 +143,7 @@ def collect():
                         "initial_equity_usc": cfg['initial_equity_usc'],
                         "drawdown_threshold_usc": cfg['initial_equity_usc']*(1-cfg['account_loss_fraction']),
                         "equity_decline_fraction": max(0,1-account.equity/cfg['initial_equity_usc'])},
+            "trial": {"start_epoch": cfg["start_epoch"], "history_start_epoch": cfg.get("history_start_epoch", cfg["start_epoch"]), "baseline_equity_usc": cfg["initial_equity_usc"], "results_scope": "all preserved history; loss gates use current trial only"},
             "halt": halt[0] if halt else None, "events": events, "unallocated_fees_usc": unallocated,
             "watchlist": cfg["symbols"], "coverage": coverage,
             "strategies": strategy_rows, "positions": position_rows, "strategy_coverage": strategy_coverage,
