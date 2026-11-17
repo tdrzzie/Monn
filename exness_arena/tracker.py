@@ -176,6 +176,8 @@ def collect():
     try:
         from .research import collect as collect_research
         collect_research(native, ps, ds)
+        from .shadow_portfolio import collect as collect_portfolios
+        collect_portfolios(native, STATE)
     except Exception as exc:
         from .research import research_error
         research_error('tracker sampling', exc)
@@ -196,6 +198,10 @@ class Handler(BaseHTTPRequestHandler):
             elif path == '/api/research':
                 target = STATE / 'research-summary.json'
                 payload = target.read_bytes() if target.exists() else b'{"status":"initializing","paper_only":true}'
+                from .shadow_portfolio import summary as portfolio_summary
+                report = json.loads(payload)
+                report['portfolio_analysis'] = portfolio_summary(STATE)
+                payload = json.dumps(report).encode('utf-8')
             elif path == '/api/history':
                 from .dashboard_api import history
                 q = parse_qs(route.query)
