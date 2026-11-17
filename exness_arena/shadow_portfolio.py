@@ -2,6 +2,7 @@
 from collections import defaultdict
 from contextlib import closing
 import json
+import hashlib
 import math
 import sqlite3
 import time
@@ -63,6 +64,9 @@ def collect(native,state,now=None):
     with closing(sqlite3.connect((state/'research.sqlite3').resolve().as_uri()+'?mode=ro',uri=True,timeout=3)) as db:
         db.row_factory=sqlite3.Row
         rows=[dict(r) for r in db.execute('SELECT s.*,d.mode FROM shadows s JOIN research_decisions d ON d.id=s.decision_id')]
+        from .shadow_costs import load, costs
+        contexts,broker_deals=load(db)
+        cost_evidence={r['id']:costs(r,contexts,broker_deals) for r in rows}
     groups=defaultdict(list)
     for r in rows:groups[tuple(r[k] for k in KEYS)].append(r)
     symbols={r['symbol'] for r in rows if r['status']=='open'}
@@ -98,7 +102,19 @@ def collect(native,state,now=None):
                 floating+=(price-r['entry'])*(1 if r['side']==0 else -1)*r['volume']*unit
                 if rate is None:missing_margin+=1
                 else:margin+=r['volume']*rate
-            sample=dict(time=now,realized_usc=realized,floating_usc=None if missing else floating,
+            evidence=[cost_evidence[r['id']] for r in items]
+            known_commission=sum(e['commission_usc'] for e in evidence if e['commission_usc'] is not None)
+            known_swap=sum(e['swap_usc'] for e in evidence if e['swap_usc'] is not None)
+            known_slippage=sum(e['slippage_adjustment_usc'] for e in evidence if e['slippage_adjustment_usc'] is not None)
+            complete=sum(e['complete'] for e in evidence)
+            gross=None if missing or bad_closed else realized+floating
+            sample=dict(time=now,net_equity_usc=gross+known_commission+known_swap+known_slippage if gross is not None and complete==len(items) else None,
+                known_commission_usc=known_commission if any(e['commission_usc'] is not None for e in evidence) else None,
+                known_swap_usc=known_swap if any(e['swap_usc'] is not None for e in evidence) else None,
+                known_slippage_adjustment_usc=known_slippage if any(e['slippage_adjustment_usc'] is not None for e in evidence) else None,
+                cost_evidence_sha256=hashlib.sha256(json.dumps({r['id']:cost_evidence[r['id']] for r in items},sort_keys=True).encode()).hexdigest(),
+                cost_total_trades=len(items),cost_complete_trades=complete,commission_covered_trades=sum(e['commission_usc'] is not None for e in evidence),
+                cost_recipe='exact-broker-lifecycle-v1',realized_usc=realized,floating_usc=None if missing else floating,
                 equity_usc=None if missing or bad_closed else realized+floating,
                 margin_usc=None if missing_margin else margin,open_positions=len(opened),closed_positions=len(closed),
                 missing_marks=missing,missing_closed_values=bad_closed,missing_margin=missing_margin,
@@ -116,6 +132,10 @@ def summary(state):
         for key,raw in db.execute('SELECT key,payload FROM samples ORDER BY time'):groups[key].append(json.loads(raw))
     result=[]
     for key,rows in groups.items():
-        item=dict(zip(KEYS,json.loads(key)));item.update(metrics(rows));item['versions']=rows[-1]['versions'];item['version_count']=len(item['versions']);item['open_positions']=rows[-1]['open_positions'];result.append(item)
+        item=dict(zip(KEYS,json.loads(key)));item.update(metrics(rows));item['versions']=rows[-1]['versions'];item['version_count']=len(item['versions']);item['open_positions']=rows[-1]['open_positions']
+        net=metrics([dict(r,equity_usc=r.get('net_equity_usc')) for r in rows])
+        for k in ('equity_usc','sampled_max_drawdown_usc','current_underwater_seconds','longest_observed_underwater_seconds','complete_equity_samples'):item['net_'+k]=net[k]
+        for k in ('known_commission_usc','known_swap_usc','known_slippage_adjustment_usc','cost_total_trades','cost_complete_trades','commission_covered_trades'):item[k]=rows[-1].get(k)
+        result.append(item)
     return dict(portfolios=result,updated_at=time.time(),paper_only=True,
-        limitations='Prospective sampled gross P/L only. No historical equity backfill. Versions are pooled explicitly within strategy/cohort/plan/variant; not independent validation. Simultaneous signals are hypothetical and live loss/addition gates are not simulated. Margin sums current standalone linear per-lot estimates; broker hedging offsets, tiers, historical financing/conversion, fees and extra slippage are excluded. No capital baseline is assumed: percentage drawdown and margin utilization are unknown. Missing marks remain null. Gaps over 120 seconds break underwater episodes; durations are observed lower bounds. Flat or one-sample paths do not establish safety.')
+        limitations='Prospective sampled gross P/L only. No historical equity backfill. Versions are pooled explicitly within strategy/cohort/plan/variant; not independent validation. Simultaneous signals are hypothetical and live loss/addition gates are not simulated. Margin sums current standalone linear per-lot estimates; broker hedging offsets, tiers, historical financing/conversion, Gross P/L excludes costs. Net P/L is available only with complete exact-lifecycle broker cost coverage, including explicit zero execution delta when observed fills and realized gross agree; unrelated trades and current swap tariffs are never backcast. Known partial costs are shown separately and never called full net P/L. No capital baseline is assumed: percentage drawdown and margin utilization are unknown. Missing marks remain null. Gaps over 120 seconds break underwater episodes; durations are observed lower bounds. Flat or one-sample paths do not establish safety.')
