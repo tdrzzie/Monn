@@ -76,3 +76,21 @@ def test_http_assets_are_local_only_and_unknown_paths_cannot_read_files(data):
         with pytest.raises(HTTPError) as exc:urlopen(base+'/api/history?repo=bad')
         assert exc.value.code==400
     finally:server.shutdown();server.server_close()
+
+def test_collector_serves_timestamped_dashboard_before_initial_research_warmup(monkeypatch):
+ from types import SimpleNamespace as S
+ from exness_arena import tracker
+ calls=[]
+ class Server:
+  def __init__(self,*args):calls.append('serve')
+  def serve_forever(self):pass
+  def shutdown(self):calls.append('shutdown')
+ def collect():calls.append('collect');raise KeyboardInterrupt
+ monkeypatch.setattr(tracker,'Gateway',lambda *a:S())
+ monkeypatch.setattr(tracker,'wait_for_connection',lambda *a,**k:None)
+ monkeypatch.setattr(tracker,'ThreadingHTTPServer',Server)
+ monkeypatch.setattr(tracker.threading,'Thread',lambda *a,**k:S(start=lambda:None))
+ monkeypatch.setattr(tracker,'collect',collect)
+ monkeypatch.setattr(tracker.native,'shutdown',lambda:None)
+ with pytest.raises(KeyboardInterrupt):tracker.main()
+ assert calls==['serve','collect','shutdown']

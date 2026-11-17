@@ -246,7 +246,8 @@ def main():
     gateway = Gateway(native, 'Monn')
     # The collector remains available while strategy runners are manually paused.
     wait_for_connection(gateway, 'tracker', stop_path=None)
-    collect()
+    # Serve the last timestamped snapshot while the initial research pass warms.
+    # Existing staleness checks remain authoritative; no extra native pass before binding.
     server = ThreadingHTTPServer(("127.0.0.1", 8765), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     print("Read-only tracker: http://127.0.0.1:8765", flush=True)
