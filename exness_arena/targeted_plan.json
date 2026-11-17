@@ -1,0 +1,43 @@
+{
+  "id": "targeted-risk-forward-v1.1",
+  "entry_latency_seconds": 0.25,
+  "maximum_tick_window_seconds": 300,
+  "description": "Predeclared prospective probes; no optimization or automatic promotion.",
+  "strategies": {
+    "bollinger_reversed": [
+      {"key":"entry_stop_025r","arm_r":0.25,"lock_r":0.0},
+      {"key":"lock_025_after_05r","arm_r":0.5,"lock_r":0.25},
+      {"key":"giveback_half_after_05r","giveback_arm_r":0.5,"giveback_fraction":0.5},
+      {"key":"hold_60m","hold_seconds":3600},
+      {"key":"hold_120m","hold_seconds":7200},
+      {"key":"portfolio_cap_2","max_positions":2},
+      {"key":"portfolio_cap_5","max_positions":5}
+    ],
+    "zscore_reversed": [
+      {"key":"entry_stop_025r","arm_r":0.25,"lock_r":0.0},
+      {"key":"lock_025_after_05r","arm_r":0.5,"lock_r":0.25},
+      {"key":"giveback_half_after_05r","giveback_arm_r":0.5,"giveback_fraction":0.5},
+      {"key":"hold_60m","hold_seconds":3600},
+      {"key":"hold_120m","hold_seconds":7200},
+      {"key":"portfolio_cap_2","max_positions":2},
+      {"key":"portfolio_cap_5","max_positions":5}
+    ],
+    "vol_squeeze": [
+      {"key":"trend_aligned","filter":"trend_aligned"},
+      {"key":"atr_band","filter":"atr_band","min_atr_fraction":0.0002,"max_atr_fraction":0.005},
+      {"key":"spread_005r","filter":"spread","max_spread_r":0.05}
+    ],
+    "ema_cross": [
+      {"key":"entry_stop_025r","arm_r":0.25,"lock_r":0.0},
+      {"key":"lock_025_after_05r","arm_r":0.5,"lock_r":0.25},
+      {"key":"giveback_half_after_05r","giveback_arm_r":0.5,"giveback_fraction":0.5},
+      {"key":"trail_025_after_05r","arm_r":0.5,"trail_r":0.25}
+    ],
+    "kalman_trend": [
+      {"key":"entry_stop_025r","arm_r":0.25,"lock_r":0.0},
+      {"key":"lock_025_after_05r","arm_r":0.5,"lock_r":0.25},
+      {"key":"giveback_half_after_05r","giveback_arm_r":0.5,"giveback_fraction":0.5},
+      {"key":"trail_025_after_05r","arm_r":0.5,"trail_r":0.25}
+    ]
+  }
+}

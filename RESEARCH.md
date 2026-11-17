@@ -109,3 +109,7 @@ The user authorized a fresh account-equity baseline and new loss-counting period
 ## Excursion blocker recovery
 
 Fixed bootstrap probes now collect forward excursions for low-data contexts while the learned support gate stays intact. Strict same-context cohort transfer makes existing stateless calibration usable after demotion to test-only without relabeling outcomes. A read-only Aegis journal bridge observes fresh compatible protective intents and preserves all native live gates. The dashboard distinguishes missing signals, original data/model blockers and actual calibrated/bootstrap readiness. Unsupported/controller/multi-leg flows remain explicit. See `EXCURSION_TESTS.md` for scope, provenance and validation; no live execution rule or loss history is changed.
+
+## Targeted risk probes
+
+See [TARGETED_STUDIES.md](TARGETED_STUDIES.md) and the versioned targeted plan for the five-strategy forward-only experiment. Matched comparisons retain excluded opportunities and cost coverage; exposure admission uses a globally ordered cross-instrument tick stream. The standalone ledger and dashboard report portfolio risk without changing any live entry/exit, cap, loss gate, drawdown latch or ownership.
