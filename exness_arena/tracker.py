@@ -178,6 +178,8 @@ def collect():
         collect_research(native, ps, ds)
         from .shadow_portfolio import collect as collect_portfolios
         collect_portfolios(native, STATE)
+        from .excursion_tests import collect as collect_excursions
+        collect_excursions(native, STATE, cfg)
     except Exception as exc:
         from .research import research_error
         research_error('tracker sampling', exc)
@@ -201,6 +203,8 @@ class Handler(BaseHTTPRequestHandler):
                 from .shadow_portfolio import summary as portfolio_summary
                 report = json.loads(payload)
                 report['portfolio_analysis'] = portfolio_summary(STATE)
+                from .excursion_tests import summary as excursion_summary
+                report['excursion_analysis'] = excursion_summary(STATE, REGISTRY)
                 payload = json.dumps(report).encode('utf-8')
             elif path == '/api/history':
                 from .dashboard_api import history
