@@ -105,3 +105,7 @@ See [EXCURSION_TESTS.md](EXCURSION_TESTS.md) for frozen quantile hypotheses, sup
 ## Explicit new live trial, 2026-11-17
 
 The user authorized a fresh account-equity baseline and new loss-counting period for the four selected live candidates. Historical trade results, sampled paths, ownership and claims remain intact. The tracker queries from the original `history_start_epoch`; entry loss gates query from the current trial `start_epoch`. All existing position risk, lot, margin, spread, addition and loss ceilings remain enforced. Account drawdown retains its existing percentage against the fresh baseline, and can halt again. No strategy quarantine is cleared by this transition.
+
+## Excursion blocker recovery
+
+Fixed bootstrap probes now collect forward excursions for low-data contexts while the learned support gate stays intact. Strict same-context cohort transfer makes existing stateless calibration usable after demotion to test-only without relabeling outcomes. A read-only Aegis journal bridge observes fresh compatible protective intents and preserves all native live gates. The dashboard distinguishes missing signals, original data/model blockers and actual calibrated/bootstrap readiness. Unsupported/controller/multi-leg flows remain explicit. See `EXCURSION_TESTS.md` for scope, provenance and validation; no live execution rule or loss history is changed.
