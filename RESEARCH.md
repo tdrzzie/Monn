@@ -113,3 +113,8 @@ Fixed bootstrap probes now collect forward excursions for low-data contexts whil
 ## Targeted risk probes
 
 See [TARGETED_STUDIES.md](TARGETED_STUDIES.md) and the versioned targeted plan for the five-strategy forward-only experiment. Matched comparisons retain excluded opportunities and cost coverage; exposure admission uses a globally ordered cross-instrument tick stream. The standalone ledger and dashboard report portfolio risk without changing any live entry/exit, cap, loss gate, drawdown latch or ownership.
+## Research sampler recovery
+
+The running tracker uses `exness_arena/research_sampling.py`. It reads broker data before journal writes, reuses durable initial risk and buffers the unchanged shadow exit engine's SQL until valuation finishes. Atomic writes compare the full original shadow row before applying results, so concurrent updates are preserved. It has no order-submission interface and does not modify execution flags, strategy stages or ownership. Missing valuations remain recorded errors rather than fabricated outcomes. This addresses research-initialization lock failures without changing frozen live sources. Donchian resumes as `test_only` after its specific initialization quarantine is verified and removed; other halt flags and claimed bars remain untouched.
+
+Sampler recovery validation: 285 shared tests passed in the restricted run; the one localhost HTTP test passed when rerun with socket access. Four focused regression checks cover competing journal writers during broker reads, cached initial risk, stale shadow updates and preparation failures. Frozen live source hashes remain unchanged.

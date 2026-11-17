@@ -175,7 +175,7 @@ def collect():
     health("tracker", "running", timestamp)
     # Research uses a separate DB and never owns the live heartbeat or halt flags.
     try:
-        from .research import collect as collect_research
+        from .research_sampling import collect as collect_research
         collect_research(native, ps, ds)
         from .shadow_portfolio import collect as collect_portfolios
         collect_portfolios(native, STATE)
