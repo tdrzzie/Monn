@@ -59,7 +59,7 @@ def summarize(deals, positions, owners, cfg, samples=None, group_specs=None):
             "win_rate": wins / len(closed) if closed else None, "profit_factor": gains / losses if losses else None,
             "booked_net_usc": booked, "closed_net_usc": sum(closed), "floating_usc": floating,
             "total_net_usc": booked + floating, "total_net_usd": (booked + floating) / 100,
-            "sampled_drawdown_usc": drawdown, "risk_budget_usc": cfg["risk_budget_usc"],
+            "sampled_drawdown_usc": drawdown, "risk_budget_usc": None if cfg.get('live_per_position_cap_disabled') is True else cfg["risk_budget_usc"],
             "open_positions": sum(owners.get(p.identifier) == bot for p in positions),
             "api_cost_usd": 0.0 if bot in ("Monn", "MT5-Python-Trading", "tradingbot", "Forex-Trading-Bot", "mt5_live_trading_bot") else None})
     return result, unallocated
@@ -150,7 +150,7 @@ def collect():
             "compatibility": json.loads((PACKAGE / 'compatibility.json').read_text()) if (PACKAGE / 'compatibility.json').exists() else {},
             "strategy_stages": cfg.get("strategy_stages", {}),
             "promotion_policy_sha256": cfg.get("promotion_policy_sha256"),
-            "risk_limits": {"default_max_volume": cfg["max_volume"], "max_volume_by_symbol": cfg.get("max_volume_by_symbol", {}), "per_position_usc": cfg['risk_budget_usc'], "combined_open_risk_cap_usc": cfg.get('total_risk_budget_usc'),
+            "risk_limits": {"default_max_volume": cfg["max_volume"], "max_volume_by_symbol": cfg.get("max_volume_by_symbol", {}), "per_position_usc": None if cfg.get('live_per_position_cap_disabled') is True else cfg['risk_budget_usc'], "combined_open_risk_cap_usc": cfg.get('total_risk_budget_usc'),
                             "strategy_loss_usc": cfg.get('strategy_loss_budget_usc', cfg['bot_loss_budget_usc']),
                             "repo_loss_usc": cfg['bot_loss_budget_usc'], "account_drawdown_fraction": cfg['account_loss_fraction']},
             "position_policy": {"mode": "hedge_with_profitable_additions", "max_positions_per_pair_per_bot": None,

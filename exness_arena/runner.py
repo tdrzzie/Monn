@@ -235,7 +235,9 @@ def main(bot):
 
 def run_loop(bot, gateway, kind, watchlist, cycles, once=False):
     health(bot, "running", "Waiting for a new closed bar")
-    print(f"{bot}: started, magic={REGISTRY[bot]['magic']}, risk cap={settings()['risk_budget_usc']:.4f} USC", flush=True)
+    cfg = settings()
+    cap = 'disabled' if cfg.get('live_per_position_cap_disabled') is True else f"{cfg['risk_budget_usc']:.4f} USC"
+    print(f"{bot}: started, magic={REGISTRY[bot]['magic']}, fixed live risk cap={cap}", flush=True)
     # Single-process lock prevents accidental duplicate launch. SQLite guard also serializes orders.
     lock_path = STATE / (bot + ".lock")
     with lock_path.open("a+b") as handle:

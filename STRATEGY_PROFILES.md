@@ -77,7 +77,7 @@ These shared guard rules apply to all configured repositories; AegisQuant adds i
 
 | Rule | Current setting |
 |---|---|
-| Per-position stop-risk ceiling | 3.50 USC for every strategy |
+| Per-position stop-risk ceiling | Disabled for live entries. Remaining loss headroom still bounds each entry. |
 | Combined open-risk cap | Disabled (`total_risk_budget_usc: null`); no combined open-risk cap |
 | Default maximum order volume | 0.01 cent lots; unchanged for forex, metals, crypto and oil |
 | Index-specific lot ceilings | US30c: 0.05, US500c: 0.14, USTECc: 0.05 cent lots; broker minimum/step still apply |
@@ -90,7 +90,7 @@ These shared guard rules apply to all configured repositories; AegisQuant adds i
 
 A strategy may hold a first buy and first sell on the same pair together. Every additional position in a direction requires **every existing position from that same strategy on that pair and direction** to be individually profitable after swap and known opening fees. Zero, negative or non-finite net profit blocks additions. A profitable basket cannot hide a losing position. Other strategies have independent position rules; an opposite signal does not automatically close existing positions.
 
-The existing five bots require a fresh qualifying closed M15 signal. AegisQuant uses each specification's original closed-bar timeframe. Every entry must fit the per-position ceiling and remaining strategy/repo loss headroom. Sizing reserves 10% for execution drift, rounds volume down and skips signals when the broker's minimum volume cannot fit. Entry margin must not exceed 10% of free margin, and spread must not exceed 15% of stop distance. Equal ceilings do not imply equal exposure or trade counts.
+The existing five bots require a fresh qualifying closed M15 signal. AegisQuant uses each specification's original closed-bar timeframe. Every entry must fit remaining strategy/repo loss headroom and the shared fixed per-position ceiling when enabled. When that ceiling is disabled the guard uses remaining loss headroom for preflight and checks the new fill against its approved budget. Historical and ongoing paper studies retain their fixed sizing budget for comparable results. Sizing reserves 10% for execution drift, rounds volume down and skips signals when the broker's minimum volume cannot fit. Entry margin must not exceed 10% of free margin, and spread must not exceed 15% of stop distance. Equal ceilings do not imply equal exposure or trade counts.
 
 Strategy/repo loss checks use booked deal P&L including swap, commissions and fees since the preserved trial start; they are net-loss thresholds, not gross-loss counters. Profits do not raise the configured ceilings. The account equity gate also includes manual/external positions. Loss gates block new entries; they do not automatically liquidate the book or guarantee a maximum realized loss. Stops may slip or gap.
 
@@ -108,7 +108,7 @@ Recovery never retries an order, clears a claimed signal bar, replays missed sig
 
 ### Stop-loss and take-profit policy
 
-Original protection is used where the source strategy supplies executable price rules. Strategies without standalone price protection retain the explicit existing safety fallback; they are not described as having unique native SL/TP. A missing or invalid supported native stop skips the signal. All levels remain subject to the same broker validation and 3.50 USC risk ceiling; stops are never changed just to force a trade to fit.
+Original protection is used where the source strategy supplies executable price rules. Strategies without standalone price protection retain the explicit existing safety fallback; they are not described as having unique native SL/TP. A missing or invalid supported native stop skips the signal. All levels remain subject to broker validation and the applicable entry budget; stops are never changed just to force a trade to fit.
 
 | Strategy group | Protection mode for new entries | Source rules and limitations |
 |---|---|---|

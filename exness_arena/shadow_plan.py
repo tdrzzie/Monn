@@ -35,8 +35,8 @@ def candidates(request, quote):
         yield candidate
 
 
-def size(candidate, native, config, symbol, contract, requested, quote):
-    """Broker-valued sizing, bounded by the unchanged live monetary and lot ceilings."""
+def size(candidate, native, config, symbol, contract, requested, quote, *, for_live_recipe=False):
+    """Broker-valued sizing for a paper scenario or guarded live recipe."""
     if candidate.get('error'):
         raise ValueError(candidate['error'])
     r=dict(candidate);s=contract
@@ -59,14 +59,17 @@ def size(candidate, native, config, symbol, contract, requested, quote):
     requested=float(requested)
     if not math.isfinite(requested) or requested<=0:
         raise ValueError('Invalid requested paper volume')
-    volume=min(requested,entry_volume_cap(symbol,config),s.volume_max,config['risk_budget_usc']*.9/-unit)
+    ceiling = None if for_live_recipe and config.get('live_per_position_cap_disabled') is True else config['risk_budget_usc']
+    volume=min(requested,entry_volume_cap(symbol,config),s.volume_max)
+    if ceiling is not None:
+        volume=min(volume,ceiling*.9/-unit)
     volume=round(math.floor(volume/s.volume_step+1e-9)*s.volume_step,8)
     if volume<s.volume_min-1e-9:
         raise ValueError('Minimum volume does not fit paper risk ceiling')
     pnl=native.order_calc_profit(r['side'],symbol,volume,r['entry'],r['sl'])
     margin=native.order_calc_margin(r['side'],symbol,volume,r['entry'])
     account=native.account_info()
-    if pnl is None or not math.isfinite(pnl) or not 0 < -pnl <= config['risk_budget_usc']:
+    if pnl is None or not math.isfinite(pnl) or pnl>=0 or (ceiling is not None and -pnl>ceiling):
         raise ValueError('Paper risk check failed')
     if (margin is None or not math.isfinite(margin) or margin<0 or account is None
             or not math.isfinite(account.margin_free) or account.margin_free<=0 or margin>account.margin_free*.1):

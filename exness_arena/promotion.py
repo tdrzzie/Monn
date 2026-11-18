@@ -76,7 +76,7 @@ class RecipeGateway:
                 proposal['sl'] = round(round(float(proposal['sl'])/contract.trade_tick_size)*contract.trade_tick_size, contract.digits)
             chosen = next(c for c in candidates(proposal, quote) if c['variant'] == self.variant)
             selected = size(chosen, self.gateway, config, symbol,
-                            self.gateway.symbol_info(symbol), request['volume'], quote)
+                            self.gateway.symbol_info(symbol), request['volume'], quote, for_live_recipe=True)
         except (ValueError, TypeError, KeyError) as exc:
             return SimpleNamespace(retcode=10006, comment='Frozen recipe skipped: ' + str(exc), order=0, deal=0)
         observe(self.gateway, promotion_source_strategy=self.strategy, promotion_variant=self.variant,

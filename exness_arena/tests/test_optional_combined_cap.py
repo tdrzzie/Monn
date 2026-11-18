@@ -67,3 +67,33 @@ def test_config_transition_changes_only_cap_and_does_not_reset_halts(setup,tmp_p
     before.pop('total_risk_budget_usc')
     assert before==after
     with common.locked() as db:assert db.execute("SELECT value FROM flags WHERE name='halt'").fetchone()[0]=='existing loss halt'
+
+
+def test_live_fixed_cap_can_be_disabled_without_removing_headroom_or_halt(setup):
+    g, n = setup
+    g.config.update(total_risk_budget_usc=None, risk_budget_usc=3.5,
+                    bot_loss_budget_usc=5.24, strategy_loss_budget_usc=5.24, max_volume=.01)
+    order = request(sl=1.0961)
+    with pytest.raises(GuardError, match='Minimum broker volume'):
+        prepare(g, order)
+    g.config['live_per_position_cap_disabled'] = True
+    assert prepare(g, order)['volume'] == .01  # 4 USC stop, above the old 3.50 ceiling.
+    with pytest.raises(GuardError, match='Minimum broker volume'):
+        prepare(g, request(sl=1.0941))
+    with common.locked() as db:
+        db.execute("INSERT INTO flags VALUES('halt','account drawdown')")
+    with pytest.raises(GuardError, match='Trial is halted'):
+        prepare(g, order)
+    assert not n.sent
+
+
+def test_live_reversal_preflight_uses_flag_and_paper_keeps_fixed_ceiling(setup):
+    from exness_arena.shadow_plan import size
+    g, n = setup
+    g.config.update(risk_budget_usc=3.5, live_per_position_cap_disabled=True, max_volume=.01)
+    quote = {'bid': 1.1, 'ask': 1.1001}
+    candidate = {'side': 0, 'entry': 1.1001, 'sl': 1.0961, 'tp': 1.1041}
+    args = (candidate, n, g.config, 'EURUSDc', n.symbol_info('EURUSDc'), .01, quote)
+    with pytest.raises(ValueError, match='Minimum volume'):
+        size(*args)
+    assert size(*args, for_live_recipe=True)['volume'] == .01

@@ -11,7 +11,7 @@
       "source_sha256": {
         "Monn/exness_arena/adapters.py": "2f1a6c735741cba57e507ac599ae61c38d639e4b48f5c44a130aa62070f7a11d",
         "Monn/exness_arena/expanded.py": "40c9ff522d9461ef9a1d9ccf79c1aead951f27dd19705f9dd8a48aaff8f648e9",
-        "Monn/exness_arena/shadow_plan.py": "129918730fc8a556242c86a170491e58798ab875c96df541ee4735358ab734b3",
+        "Monn/exness_arena/shadow_plan.py": "e84e2b091756463c6ffccc6d7a58e817534abdca546534ea9b187078a2708376",
         "Monn/exness_arena/volume.py": "0a48308fcdd5a443c6c31dbc4a3b38b5dffbd0b0ddbdef92f969708f8892d33d",
         "tradingbot/aurum/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tradingbot/aurum/core/config.py": "23e101d3eba91923b8bb4b4df3292c0e96065f3323b6e2e00dae8eea84fc3631",
@@ -48,12 +48,12 @@
         "tradingbot/aurum/strategies/rl.py": "01b42b445f20b0b4da80a2084d740c82c90a9dd8c19ee42bf562028c29e352d9",
         "tradingbot/aurum/strategies/seasonal.py": "f5e7bf06a6111f8f2376fe830a73afc4e47b2ddcf806329d9413d1c3edaca4d5",
         "tradingbot/aurum/strategies/trend.py": "61536787d94f6bb235d787e605df83fb02b5ce32852653ff1a1443e3324057b0",
-        "Monn/exness_arena/promotion.py": "7282d4b3001f0e642fd5e0666e95377b9f9835eed16307610800de6d8c8f0008",
-        "Monn/exness_arena/runner.py": "b0e9ab4ce794004fb4f37616e163005f9c52dbc4329f05d9d3c73f3acb50753c",
-        "Monn/exness_arena/guard.py": "de5fcd1d1b71076f79cfc7e21b0322ea43fc8c71d20b5bb5fdc12153ed929450",
+        "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
+        "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
+        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "7d2d241e42edd09231a21800ac6a220f80283dcf760de0656e5e68a2ce2e8a3f"
+        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
       }
     },
     "tradingbot/zscore_reversed": {
@@ -63,7 +63,7 @@
       "source_sha256": {
         "Monn/exness_arena/adapters.py": "2f1a6c735741cba57e507ac599ae61c38d639e4b48f5c44a130aa62070f7a11d",
         "Monn/exness_arena/expanded.py": "40c9ff522d9461ef9a1d9ccf79c1aead951f27dd19705f9dd8a48aaff8f648e9",
-        "Monn/exness_arena/shadow_plan.py": "129918730fc8a556242c86a170491e58798ab875c96df541ee4735358ab734b3",
+        "Monn/exness_arena/shadow_plan.py": "e84e2b091756463c6ffccc6d7a58e817534abdca546534ea9b187078a2708376",
         "Monn/exness_arena/volume.py": "0a48308fcdd5a443c6c31dbc4a3b38b5dffbd0b0ddbdef92f969708f8892d33d",
         "tradingbot/aurum/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tradingbot/aurum/core/config.py": "23e101d3eba91923b8bb4b4df3292c0e96065f3323b6e2e00dae8eea84fc3631",
@@ -100,12 +100,12 @@
         "tradingbot/aurum/strategies/rl.py": "01b42b445f20b0b4da80a2084d740c82c90a9dd8c19ee42bf562028c29e352d9",
         "tradingbot/aurum/strategies/seasonal.py": "f5e7bf06a6111f8f2376fe830a73afc4e47b2ddcf806329d9413d1c3edaca4d5",
         "tradingbot/aurum/strategies/trend.py": "61536787d94f6bb235d787e605df83fb02b5ce32852653ff1a1443e3324057b0",
-        "Monn/exness_arena/promotion.py": "7282d4b3001f0e642fd5e0666e95377b9f9835eed16307610800de6d8c8f0008",
-        "Monn/exness_arena/runner.py": "b0e9ab4ce794004fb4f37616e163005f9c52dbc4329f05d9d3c73f3acb50753c",
-        "Monn/exness_arena/guard.py": "de5fcd1d1b71076f79cfc7e21b0322ea43fc8c71d20b5bb5fdc12153ed929450",
+        "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
+        "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
+        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "7d2d241e42edd09231a21800ac6a220f80283dcf760de0656e5e68a2ce2e8a3f"
+        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
       }
     },
     "tradingbot/vol_squeeze": {
@@ -115,7 +115,7 @@
       "source_sha256": {
         "Monn/exness_arena/adapters.py": "2f1a6c735741cba57e507ac599ae61c38d639e4b48f5c44a130aa62070f7a11d",
         "Monn/exness_arena/expanded.py": "40c9ff522d9461ef9a1d9ccf79c1aead951f27dd19705f9dd8a48aaff8f648e9",
-        "Monn/exness_arena/shadow_plan.py": "129918730fc8a556242c86a170491e58798ab875c96df541ee4735358ab734b3",
+        "Monn/exness_arena/shadow_plan.py": "e84e2b091756463c6ffccc6d7a58e817534abdca546534ea9b187078a2708376",
         "Monn/exness_arena/volume.py": "0a48308fcdd5a443c6c31dbc4a3b38b5dffbd0b0ddbdef92f969708f8892d33d",
         "tradingbot/aurum/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tradingbot/aurum/core/config.py": "23e101d3eba91923b8bb4b4df3292c0e96065f3323b6e2e00dae8eea84fc3631",
@@ -152,12 +152,12 @@
         "tradingbot/aurum/strategies/rl.py": "01b42b445f20b0b4da80a2084d740c82c90a9dd8c19ee42bf562028c29e352d9",
         "tradingbot/aurum/strategies/seasonal.py": "f5e7bf06a6111f8f2376fe830a73afc4e47b2ddcf806329d9413d1c3edaca4d5",
         "tradingbot/aurum/strategies/trend.py": "61536787d94f6bb235d787e605df83fb02b5ce32852653ff1a1443e3324057b0",
-        "Monn/exness_arena/promotion.py": "7282d4b3001f0e642fd5e0666e95377b9f9835eed16307610800de6d8c8f0008",
-        "Monn/exness_arena/runner.py": "b0e9ab4ce794004fb4f37616e163005f9c52dbc4329f05d9d3c73f3acb50753c",
-        "Monn/exness_arena/guard.py": "de5fcd1d1b71076f79cfc7e21b0322ea43fc8c71d20b5bb5fdc12153ed929450",
+        "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
+        "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
+        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "7d2d241e42edd09231a21800ac6a220f80283dcf760de0656e5e68a2ce2e8a3f"
+        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
       }
     },
     "Monn/price_action_1r": {
@@ -168,7 +168,7 @@
         "Monn/configs/price_action_config.json": "02e5073f569829d99b9323bf56338483229eda2bb3ca90de2ccb059eb7a6906e",
         "Monn/exness_arena/adapters.py": "2f1a6c735741cba57e507ac599ae61c38d639e4b48f5c44a130aa62070f7a11d",
         "Monn/exness_arena/expanded.py": "40c9ff522d9461ef9a1d9ccf79c1aead951f27dd19705f9dd8a48aaff8f648e9",
-        "Monn/exness_arena/shadow_plan.py": "129918730fc8a556242c86a170491e58798ab875c96df541ee4735358ab734b3",
+        "Monn/exness_arena/shadow_plan.py": "e84e2b091756463c6ffccc6d7a58e817534abdca546534ea9b187078a2708376",
         "Monn/exness_arena/volume.py": "0a48308fcdd5a443c6c31dbc4a3b38b5dffbd0b0ddbdef92f969708f8892d33d",
         "Monn/indicators/__init__.py": "1757d6df46a1d94373ac5d159a2486ae42344fd697f2a83c6fae15dcfa84f948",
         "Monn/indicators/heikin_ashi.py": "52f45ca2f31e9d20aecdd60625c3ff2baa25d699a14487ee1d0697680d443ea1",
@@ -187,12 +187,12 @@
         "Monn/strategies/trend_following.py": "516c4a4db38ef72c64fec988e9b47a3eac421f3ce6607e35ec58b0b0647a5e4c",
         "Monn/strategy_utils.py": "ee312f36451b39f9a439796198db11ae0bceff0c8e870216184bfc5f638d6880",
         "Monn/trader.py": "0f08ef10cf84fb81b6ded4a9d389b2c9bebdb6ca678e139fb91863d606f08e35",
-        "Monn/exness_arena/promotion.py": "7282d4b3001f0e642fd5e0666e95377b9f9835eed16307610800de6d8c8f0008",
-        "Monn/exness_arena/runner.py": "b0e9ab4ce794004fb4f37616e163005f9c52dbc4329f05d9d3c73f3acb50753c",
-        "Monn/exness_arena/guard.py": "de5fcd1d1b71076f79cfc7e21b0322ea43fc8c71d20b5bb5fdc12153ed929450",
+        "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
+        "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
+        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "7d2d241e42edd09231a21800ac6a220f80283dcf760de0656e5e68a2ce2e8a3f"
+        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
       }
     }
   }

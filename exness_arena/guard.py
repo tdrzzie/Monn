@@ -198,7 +198,7 @@ class Gateway:
         headroom = min(c['bot_loss_budget_usc'] + min(net, 0), strategy_limit + min(strategy_net, 0))
         return total, headroom
 
-    def _prepare(self, db, request):
+    def _prepare(self, db, request, *, entry_budgets=None):
         n, c = self.native, self.cfg()
         account = self.validate_account()
         if not c.get("live", False):
@@ -264,7 +264,8 @@ class Gateway:
             unit_loss = self.loss(r["type"], r["symbol"], 1.0, price, sl)
             if unit_loss <= 0:
                 raise GuardError("Invalid stop-loss risk")
-            budget = min(c["risk_budget_usc"], loss_headroom)
+            fixed_cap_disabled = c.get('live_per_position_cap_disabled') is True
+            budget = loss_headroom if fixed_cap_disabled else min(c["risk_budget_usc"], loss_headroom)
             if 'total_risk_budget_usc' not in c:
                 raise GuardError('Combined open-risk setting is missing; use null to disable it explicitly')
             combined_cap = c['total_risk_budget_usc']
@@ -272,6 +273,10 @@ class Gateway:
                 if not finite_positive(combined_cap):
                     raise GuardError('Invalid combined open-risk cap')
                 budget = min(budget, combined_cap - total)
+            if entry_budgets is not None:
+                existing_ids = {getattr(p, 'identifier', None) for p in ps}
+                entry_budgets.append((budget if fixed_cap_disabled else c["risk_budget_usc"],
+                                      existing_ids if fixed_cap_disabled else set()))
             # Reserve 10% for normal execution drift; never round volume upward.
             requested = float(r.get("volume", 0))
             if not finite_positive(requested):
@@ -295,7 +300,8 @@ class Gateway:
     def order_send(self, request):
         with locked() as db:
             try:
-                r = self._prepare(db, request)
+                entry_budgets = []
+                r = self._prepare(db, request, entry_budgets=entry_budgets)
                 check = self.native.order_check(r)
                 if check is None or check.retcode != 0:
                     raise GuardError("Broker preflight rejected order: " + str(getattr(check, "comment", "unavailable")))
@@ -312,6 +318,7 @@ class Gateway:
                 if result.retcode not in (self.native.TRADE_RETCODE_DONE, self.native.TRADE_RETCODE_DONE_PARTIAL):
                     db.execute("INSERT OR REPLACE INTO flags VALUES('halt','broker order not completed; inspect before retry')")
                 if not r.get("position") and result.retcode in (self.native.TRADE_RETCODE_DONE, self.native.TRADE_RETCODE_DONE_PARTIAL):
+                    fill_budget, prior_ids = entry_budgets[0]
                     updated = self.native.positions_get()
                     if updated is None:
                         db.execute("INSERT OR REPLACE INTO flags VALUES('halt','post-fill positions unavailable')")
@@ -320,7 +327,8 @@ class Gateway:
                             if self.owns(p):
                                 db.execute("INSERT OR IGNORE INTO owners VALUES(?,?)", (p.identifier, self.bot))
                                 db.execute('INSERT OR IGNORE INTO strategy_owners VALUES(?,?,?)', (p.identifier, self.bot, self.strategy))
-                                if not p.sl or self.loss(p.type, p.symbol, p.volume, p.price_open, p.sl) > self.cfg()["risk_budget_usc"]:
+                                if not p.sl or (p.identifier not in prior_ids and
+                                                self.loss(p.type, p.symbol, p.volume, p.price_open, p.sl) > fill_budget):
                                     db.execute("INSERT OR REPLACE INTO flags VALUES('halt','post-fill protection or risk mismatch')")
                 return result
             except GuardError as e:
