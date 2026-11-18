@@ -50,10 +50,10 @@
         "tradingbot/aurum/strategies/trend.py": "61536787d94f6bb235d787e605df83fb02b5ce32852653ff1a1443e3324057b0",
         "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
         "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
-        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
+        "Monn/exness_arena/guard.py": "6f82707a4a1228f27c9a573cc9921e099c93b6eb9cc2ac0576a23eed62d09047",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
+        "Monn/exness_arena/research.py": "d9347d934cac31c0aa6d7c628950819617368db6cfc5df747b9255674f66ad52"
       }
     },
     "tradingbot/zscore_reversed": {
@@ -102,10 +102,10 @@
         "tradingbot/aurum/strategies/trend.py": "61536787d94f6bb235d787e605df83fb02b5ce32852653ff1a1443e3324057b0",
         "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
         "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
-        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
+        "Monn/exness_arena/guard.py": "6f82707a4a1228f27c9a573cc9921e099c93b6eb9cc2ac0576a23eed62d09047",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
+        "Monn/exness_arena/research.py": "d9347d934cac31c0aa6d7c628950819617368db6cfc5df747b9255674f66ad52"
       }
     },
     "tradingbot/vol_squeeze": {
@@ -154,10 +154,10 @@
         "tradingbot/aurum/strategies/trend.py": "61536787d94f6bb235d787e605df83fb02b5ce32852653ff1a1443e3324057b0",
         "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
         "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
-        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
+        "Monn/exness_arena/guard.py": "6f82707a4a1228f27c9a573cc9921e099c93b6eb9cc2ac0576a23eed62d09047",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
+        "Monn/exness_arena/research.py": "d9347d934cac31c0aa6d7c628950819617368db6cfc5df747b9255674f66ad52"
       }
     },
     "Monn/price_action_1r": {
@@ -189,10 +189,10 @@
         "Monn/trader.py": "0f08ef10cf84fb81b6ded4a9d389b2c9bebdb6ca678e139fb91863d606f08e35",
         "Monn/exness_arena/promotion.py": "0349272dbc636bf3bf35f9232d197be523c3cc4bf1222d6d75a2cdcff1ccfd5e",
         "Monn/exness_arena/runner.py": "ee7cec35839288d4f45787a159ce1268e494ef5f56491fb7deaa4e26125c93fb",
-        "Monn/exness_arena/guard.py": "0076a3d67d1b901a970ecdaa64a48b0ae96e14da766c314d7708986f14ee4e38",
+        "Monn/exness_arena/guard.py": "6f82707a4a1228f27c9a573cc9921e099c93b6eb9cc2ac0576a23eed62d09047",
         "Monn/exness_arena/identity.py": "7b51e853fc7206de0ea1be5edd8489aec3da15b327fc83a0968dc5a5c6380c35",
         "Monn/exness_arena/registry.json": "30026a7d04cde10fc478e07a5507fcc907ff21092f1b0362da42c175e21a25f4",
-        "Monn/exness_arena/research.py": "a8248bb5a6245e4722254331900f47e91c64aa6ed79fc1c0527351c1e22ecb6b"
+        "Monn/exness_arena/research.py": "d9347d934cac31c0aa6d7c628950819617368db6cfc5df747b9255674f66ad52"
       }
     }
   }

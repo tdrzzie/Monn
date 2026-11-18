@@ -77,12 +77,13 @@ These shared guard rules apply to all configured repositories; AegisQuant adds i
 
 | Rule | Current setting |
 |---|---|
-| Per-position stop-risk ceiling | Disabled for live entries. Remaining loss headroom still bounds each entry. |
+| Per-position stop-risk ceiling | Disabled for live entries. Remaining loss headroom applies to entries subject to the cumulative loss gates. |
 | Combined open-risk cap | Disabled (`total_risk_budget_usc: null`); no combined open-risk cap |
 | Default maximum order volume | 0.01 cent lots; unchanged for forex, metals, crypto and oil |
 | Index-specific lot ceilings | US30c: 0.05, US500c: 0.14, USTECc: 0.05 cent lots; broker minimum/step still apply |
 | Strategy loss budget | 5.2444 USC |
 | Repository loss backstop | 5.2444 USC shared by that repo's strategies |
+| Cumulative loss budget exception | XAUUSDc live entries are exempt from both cumulative loss gates. Gold deals still count toward the existing strategy and repository loss budgets for other instruments. Gold still requires an eligible live strategy, current drawdown clearance, server-side stop, lot and margin checks. The 10% execution reserve applies where a finite monetary entry budget remains. |
 | Account drawdown entry halt | 1% equity decline from the current explicitly authorized trial baseline |
 | Quote age ceiling | 30 seconds |
 | Shared position-count ceiling | None; AegisQuant retains its stricter original limits below |
@@ -90,7 +91,7 @@ These shared guard rules apply to all configured repositories; AegisQuant adds i
 
 A strategy may hold a first buy and first sell on the same pair together. Every additional position in a direction requires **every existing position from that same strategy on that pair and direction** to be individually profitable after swap and known opening fees. Zero, negative or non-finite net profit blocks additions. A profitable basket cannot hide a losing position. Other strategies have independent position rules; an opposite signal does not automatically close existing positions.
 
-The existing five bots require a fresh qualifying closed M15 signal. AegisQuant uses each specification's original closed-bar timeframe. Every entry must fit remaining strategy/repo loss headroom and the shared fixed per-position ceiling when enabled. When that ceiling is disabled the guard uses remaining loss headroom for preflight and checks the new fill against its approved budget. Historical and ongoing paper studies retain their fixed sizing budget for comparable results. Sizing reserves 10% for execution drift, rounds volume down and skips signals when the broker's minimum volume cannot fit. Entry margin must not exceed 10% of free margin, and spread must not exceed 15% of stop distance. Equal ceilings do not imply equal exposure or trade counts.
+The existing five bots require a fresh qualifying closed M15 signal. AegisQuant uses each specification's original closed-bar timeframe. Every entry must fit each applicable monetary limit. The exception in the table applies only to live entries on that instrument. The guard uses the remaining applicable budgets for preflight and validates the stop and any applicable risk ceiling after a new fill. Historical and ongoing paper studies retain their fixed sizing budget for comparable results. Sizing reserves 10% for execution drift, rounds volume down and skips signals when the broker's minimum volume cannot fit. Entry margin must not exceed 10% of free margin, and spread must not exceed 15% of stop distance. Equal ceilings do not imply equal exposure or trade counts.
 
 Strategy/repo loss checks use booked deal P&L including swap, commissions and fees since the preserved trial start; they are net-loss thresholds, not gross-loss counters. Profits do not raise the configured ceilings. The account equity gate also includes manual/external positions. Loss gates block new entries; they do not automatically liquidate the book or guarantee a maximum realized loss. Stops may slip or gap.
 

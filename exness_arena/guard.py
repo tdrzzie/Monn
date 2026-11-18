@@ -179,23 +179,26 @@ class Gateway:
             pnl = p.profit + p.swap + entry_fees
             if not math.isfinite(pnl) or pnl <= 0:
                 raise GuardError("Same-direction additions require every existing position to be profitable after swap and opening fees")
-        owners = {d.position_id for d in deals if (resolve(d.magic, getattr(d, 'symbol', None)) or '').startswith(self.bot + '/')}
-        owners.update(r[0] for r in db.execute("SELECT position_id FROM owners WHERE bot=?", (self.bot,)))
-        net = sum(d.profit + d.swap + d.commission + getattr(d, "fee", 0) for d in deals if d.position_id in owners)
-        if net <= -c["bot_loss_budget_usc"]:
-            raise GuardError("Per-bot trial loss budget exhausted")
-        strategy_positions = {d.position_id for d in deals if self.owns(d)}
-        strategy_positions.update(r[0] for r in db.execute('SELECT position_id FROM strategy_owners WHERE bot=? AND strategy=?', (self.bot, self.strategy)))
-        strategy_net = sum(d.profit + d.swap + d.commission + getattr(d, 'fee', 0) for d in deals if d.position_id in strategy_positions)
-        strategy_limit = c.get('strategy_loss_budget_usc', c['bot_loss_budget_usc'])
-        if strategy_net <= -strategy_limit:
-            raise GuardError('Per-strategy trial loss budget exhausted')
+        headroom = math.inf
+        gold_exempt = symbol == 'XAUUSDc' and c.get('gold_live_loss_limits_disabled') is True
+        if not gold_exempt:
+            owners = {d.position_id for d in deals if (resolve(d.magic, getattr(d, 'symbol', None)) or '').startswith(self.bot + '/')}
+            owners.update(r[0] for r in db.execute("SELECT position_id FROM owners WHERE bot=?", (self.bot,)))
+            net = sum(d.profit + d.swap + d.commission + getattr(d, "fee", 0) for d in deals if d.position_id in owners)
+            if net <= -c["bot_loss_budget_usc"]:
+                raise GuardError("Per-bot trial loss budget exhausted")
+            strategy_positions = {d.position_id for d in deals if self.owns(d)}
+            strategy_positions.update(r[0] for r in db.execute('SELECT position_id FROM strategy_owners WHERE bot=? AND strategy=?', (self.bot, self.strategy)))
+            strategy_net = sum(d.profit + d.swap + d.commission + getattr(d, 'fee', 0) for d in deals if d.position_id in strategy_positions)
+            strategy_limit = c.get('strategy_loss_budget_usc', c['bot_loss_budget_usc'])
+            if strategy_net <= -strategy_limit:
+                raise GuardError('Per-strategy trial loss budget exhausted')
+            headroom = min(c['bot_loss_budget_usc'] + min(net, 0), strategy_limit + min(strategy_net, 0))
         total = 0.0
         magics = trial_magics()
         for p in ps:
             if p.magic in magics:
                 total += self.loss(p.type, p.symbol, p.volume, p.price_open, p.sl)
-        headroom = min(c['bot_loss_budget_usc'] + min(net, 0), strategy_limit + min(strategy_net, 0))
         return total, headroom
 
     def _prepare(self, db, request, *, entry_budgets=None):

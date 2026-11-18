@@ -97,3 +97,44 @@ def test_live_reversal_preflight_uses_flag_and_paper_keeps_fixed_ceiling(setup):
     with pytest.raises(ValueError, match='Minimum volume'):
         size(*args)
     assert size(*args, for_live_recipe=True)['volume'] == .01
+
+
+@pytest.mark.parametrize(('repo_limit', 'strategy_limit', 'blocked_by'),
+                         [(5.24, 10, 'Per-bot'), (10, 5.24, 'Per-strategy')])
+def test_gold_only_exemption_preserves_other_symbols_and_drawdown(setup, repo_limit, strategy_limit, blocked_by):
+    g, n = setup
+    g.config.update(total_risk_budget_usc=None, live_per_position_cap_disabled=True,
+                    gold_live_loss_limits_disabled=True, bot_loss_budget_usc=repo_limit,
+                    strategy_loss_budget_usc=strategy_limit, max_volume=.01)
+    g.config['symbols'] += ['XAUUSDc', 'XAGUSDc']
+    # Booked Gold losses still count when sizing any non-Gold entry.
+    n.ds = [S(magic=g.magic, symbol='XAUUSDc', position_id=9, entry=0,
+              profit=0, swap=0, commission=0, fee=0),
+            S(magic=0, symbol='XAUUSDc', position_id=9, entry=1,
+              profit=-6, swap=0, commission=0, fee=0)]
+    gold = request(symbol='XAUUSDc', sl=1.0626)  # 37.50 USC at the fixture's minimum lot.
+    assert prepare(g, gold)['volume'] == .01
+    for symbol in ('EURUSDc', 'XAGUSDc'):
+        with pytest.raises(GuardError, match=blocked_by):
+            prepare(g, request(symbol=symbol))
+    n.account.equity = 980
+    assert 'drawdown' in g.order_send(gold).comment
+    with common.locked() as db:
+        assert db.execute("SELECT value FROM flags WHERE name='halt'").fetchone() == ('account drawdown',)
+    n.account.equity = 1000
+    with pytest.raises(GuardError, match='Trial is halted'):
+        prepare(g, gold)
+    assert not n.sent
+
+
+def test_gold_exemption_does_not_override_enabled_fixed_or_combined_limits(setup):
+    g, n = setup
+    g.config.update(gold_live_loss_limits_disabled=True, max_volume=.01)
+    g.config['symbols'].append('XAUUSDc')
+    order = request(symbol='XAUUSDc', sl=1.0961)
+    with pytest.raises(GuardError, match='Minimum broker volume'):
+        prepare(g, order)
+    g.config.update(live_per_position_cap_disabled=True, total_risk_budget_usc=3.5)
+    with pytest.raises(GuardError, match='Minimum broker volume'):
+        prepare(g, order)
+    assert not n.sent

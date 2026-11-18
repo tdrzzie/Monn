@@ -135,7 +135,8 @@ def source_snapshot():
 def version(db, cfg, artifact_hash=None):
     sources = source_snapshot()
     # Explicit allowlist keeps account identity and credentials outside research config snapshots.
-    keys = ('risk_budget_usc', 'live_per_position_cap_disabled', 'bot_loss_budget_usc', 'strategy_loss_budget_usc', 'total_risk_budget_usc',
+    keys = ('risk_budget_usc', 'live_per_position_cap_disabled', 'gold_live_loss_limits_disabled',
+            'bot_loss_budget_usc', 'strategy_loss_budget_usc', 'total_risk_budget_usc',
             'account_loss_fraction', 'initial_equity_usc', 'start_epoch', 'max_volume', 'max_volume_by_symbol',
             'max_quote_age_seconds', 'position_policy', 'enabled_bots', 'enabled_strategies', 'symbols', 'live', 'strategy_stages', 'promotion_policy_sha256')
     safe = {k: cfg[k] for k in keys if k in cfg}
